@@ -2,7 +2,8 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Mi Cancionero PRO</title>
+<title>Cancionero PRO</title>
+
 <style>
 body { font-family: Arial; padding: 10px; }
 
@@ -10,205 +11,214 @@ body { font-family: Arial; padding: 10px; }
 
 textarea {
   width: 100%;
-  height: 400px;
-  font-size: 16px;
+  height: 350px;
 }
 
 .cancion {
-  cursor: pointer;
-  border-bottom: 1px solid #ccc;
   padding: 5px;
+  border-bottom: 1px solid #ccc;
+}
+
+#contenedor {
+  display: flex;
+  gap: 20px;
 }
 
 #visor {
+  flex: 2;
   white-space: pre-wrap;
   border: 1px solid #ccc;
   padding: 10px;
   height: 400px;
   overflow-y: auto;
-  font-size: 18px;
 }
 
-.acorde {
-  color: red;
-  font-weight: bold;
+#imagenesPreview {
+  flex: 1;
 }
 
 img {
   max-width: 100%;
-  margin: 10px 0;
+  margin-bottom: 10px;
 }
 
-/* SOLO IMPRIMIR CANCIÓN */
+.acorde {
+  font-weight: bold;
+}
+
 @media print {
   body * { display: none; }
-  #zonaImprimir, #zonaImprimir * { display: block; }
+  #printArea, #printArea * { display: block; }
 }
 </style>
 </head>
+
 <body>
 
-<h2>🎸 Mi Cancionero</h2>
+<h2>🎸 Cancionero</h2>
 
 <div class="tabs">
-  <button onclick="mostrarTab('editor')">Editor</button>
-  <button onclick="mostrarTab('cancionero')">Cancionero</button>
+  <button onclick="tab('editor')">Editor</button>
+  <button onclick="tab('lista')">Cancionero</button>
 </div>
 
 <!-- EDITOR -->
 <div id="editor">
-  <input id="titulo" placeholder="Nombre de la canción">
-  <textarea id="contenido" placeholder="Pegá letra + acordes ([Am])"></textarea>
-
+  <input id="titulo" placeholder="Título"><br><br>
+  <textarea id="texto"></textarea>
   <p>📷 Pegá imágenes con CTRL + V</p>
-
   <button onclick="guardar()">Guardar</button>
+
+  <h3>Vista previa</h3>
+  <div id="previewTexto"></div>
+  <div id="previewImg"></div>
 </div>
 
-<!-- CANCIONERO -->
-<div id="cancionero" style="display:none;">
+<!-- LISTA -->
+<div id="lista" style="display:none;">
+
+  Color acordes:
+  <input type="color" id="color" value="#ff0000" onchange="renderActual()">
 
   <div id="canciones"></div>
 
   <hr>
 
-  Tamaño letra:
-  <input type="range" min="12" max="40" value="18" oninput="cambiarTamaño(this.value)">
-
-  <br><br>
-
-  Color acordes:
-  <input type="color" onchange="cambiarColor(this.value)">
-
-  <br><br>
-
-  <button onclick="imprimir()">🖨 PDF / Imprimir</button>
-
-  <div id="zonaImprimir">
-    <div id="visor"></div>
-    <div id="imagenes"></div>
+  <div id="printArea">
+    <div id="contenedor">
+      <div id="visor"></div>
+      <div id="imagenesPreview"></div>
+    </div>
   </div>
 
-  <br>
-
-  <button onclick="editar()">✏️ Editar</button>
-  <button onclick="borrar()">❌ Borrar</button>
+  <button onclick="imprimir()">🖨 PDF</button>
 
 </div>
 
 <script>
 let canciones = JSON.parse(localStorage.getItem("canciones")) || [];
 let actual = null;
-let imagenesTemp = [];
-let colorAcordes = "red";
+let imgsTemp = [];
 
-function mostrarTab(tab) {
-  document.getElementById("editor").style.display = tab === "editor" ? "block" : "none";
-  document.getElementById("cancionero").style.display = tab === "cancionero" ? "block" : "none";
+// tabs
+function tab(t){
+  editor.style.display = t==="editor"?"block":"none";
+  lista.style.display = t==="lista"?"block":"none";
 }
 
-function guardar() {
-  let titulo = document.getElementById("titulo").value;
-  let contenido = document.getElementById("contenido").value;
+// guardar
+function guardar(){
+  let titulo = tituloInput.value;
+  let texto = textoArea.value;
 
-  if (!titulo || !contenido) return;
+  if(!titulo || !texto) return;
 
-  canciones.push({ titulo, contenido, imagenes: imagenesTemp });
-
+  canciones.push({titulo,texto,imgs:imgsTemp});
   localStorage.setItem("canciones", JSON.stringify(canciones));
 
-  imagenesTemp = [];
-
-  document.getElementById("titulo").value = "";
-  document.getElementById("contenido").value = "";
-
-  mostrar();
+  imgsTemp = [];
+  tituloInput.value="";
+  textoArea.value="";
+  actualizar();
 }
 
-function mostrar() {
-  let html = "";
+// mostrar lista
+function actualizar(){
+  cancionesDiv.innerHTML = "";
 
-  canciones.forEach((c, i) => {
-    html += `<div class="cancion" onclick="ver(${i})">${c.titulo}</div>`;
+  canciones.forEach((c,i)=>{
+    cancionesDiv.innerHTML += `
+    <div class="cancion">
+      <b onclick="ver(${i})">${c.titulo}</b>
+      <button onclick="editar(${i})">✏️</button>
+      <button onclick="borrar(${i})">❌</button>
+    </div>`;
   });
-
-  document.getElementById("canciones").innerHTML = html;
 }
 
-function formatear(texto) {
-  return texto.replace(/\[(.*?)\]/g, `<span class="acorde" style="color:${colorAcordes}">[$1]</span>`);
-}
-
-function ver(i) {
+// ver
+function ver(i){
   actual = i;
+  renderActual();
+}
 
-  document.getElementById("visor").innerHTML = formatear(canciones[i].contenido);
+// render canción
+function renderActual(){
+  if(actual===null) return;
 
-  let imgs = "";
-  (canciones[i].imagenes || []).forEach(img => {
-    imgs += `<img src="${img}">`;
+  let c = canciones[actual];
+  let color = document.getElementById("color").value;
+
+  visor.innerHTML = c.texto.replace(/\[(.*?)\]/g,
+    `<span class="acorde" style="color:${color}">[$1]</span>`);
+
+  imagenesPreview.innerHTML="";
+  (c.imgs||[]).forEach(img=>{
+    imagenesPreview.innerHTML += `<img src="${img}">`;
   });
-
-  document.getElementById("imagenes").innerHTML = imgs;
 }
 
-function cambiarTamaño(size) {
-  document.getElementById("visor").style.fontSize = size + "px";
-}
+// editar
+function editar(i){
+  let c = canciones[i];
+  tab("editor");
 
-function cambiarColor(color) {
-  colorAcordes = color;
-  if (actual !== null) ver(actual);
-}
+  tituloInput.value = c.titulo;
+  textoArea.value = c.texto;
+  imgsTemp = c.imgs || [];
 
-function editar() {
-  if (actual === null) return;
-
-  mostrarTab('editor');
-
-  document.getElementById("titulo").value = canciones[actual].titulo;
-  document.getElementById("contenido").value = canciones[actual].contenido;
-
-  canciones.splice(actual, 1);
+  canciones.splice(i,1);
   localStorage.setItem("canciones", JSON.stringify(canciones));
-  mostrar();
+  actualizar();
 }
 
-function borrar() {
-  if (actual === null) return;
-
-  canciones.splice(actual, 1);
+// borrar
+function borrar(i){
+  canciones.splice(i,1);
   localStorage.setItem("canciones", JSON.stringify(canciones));
-
-  document.getElementById("visor").innerHTML = "";
-  document.getElementById("imagenes").innerHTML = "";
-
-  mostrar();
+  actualizar();
+  visor.innerHTML="";
+  imagenesPreview.innerHTML="";
 }
 
-function imprimir() {
+// imprimir
+function imprimir(){
   window.print();
 }
 
-/* PEGAR IMAGENES */
-document.addEventListener("paste", function(e) {
+// pegar imagen
+document.addEventListener("paste", e=>{
   let items = e.clipboardData.items;
 
-  for (let i = 0; i < items.length; i++) {
-    if (items[i].type.indexOf("image") !== -1) {
-      let blob = items[i].getAsFile();
+  for(let i=0;i<items.length;i++){
+    if(items[i].type.includes("image")){
+      let file = items[i].getAsFile();
       let reader = new FileReader();
 
-      reader.onload = function(event) {
-        imagenesTemp.push(event.target.result);
+      reader.onload = ev=>{
+        imgsTemp.push(ev.target.result);
+
+        // preview inmediato
+        previewImg.innerHTML += `<img src="${ev.target.result}">`;
       };
 
-      reader.readAsDataURL(blob);
+      reader.readAsDataURL(file);
     }
   }
 });
 
-mostrar();
+// preview texto en vivo
+textoArea.addEventListener("input", ()=>{
+  previewTexto.innerText = textoArea.value;
+});
+
+let tituloInput = document.getElementById("titulo");
+let textoArea = document.getElementById("texto");
+let cancionesDiv = document.getElementById("canciones");
+let visor = document.getElementById("visor");
+let imagenesPreview = document.getElementById("imagenesPreview");
+
+actualizar();
 </script>
 
 </body>
