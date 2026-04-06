@@ -12,13 +12,22 @@ body {
 input {
   padding: 10px;
   width: 70%;
-  font-size: 16px;
 }
 
 button {
   padding: 10px;
-  font-size: 16px;
+}
+
+.resultado {
+  margin-top: 20px;
   cursor: pointer;
+  padding: 5px;
+  border-bottom: 1px solid #ccc;
+}
+
+.letra {
+  margin-top: 20px;
+  white-space: pre-wrap;
 }
 </style>
 </head>
@@ -26,14 +35,35 @@ button {
 
 <h2>🎸 Buscador de canciones</h2>
 
-<input id="busqueda" placeholder="Ej: los piojos">
+<input id="busqueda" placeholder="Ej: soda stereo">
 <button onclick="buscar()">Buscar</button>
 
+<div id="resultados"></div>
+<div id="letra"></div>
+
 <script>
-function buscar() {
+async function buscar() {
   let q = document.getElementById("busqueda").value;
-  let url = "https://www.google.com/search?q=site:lacuerda.net+" + encodeURIComponent(q);
-  window.open(url, "_blank");
+
+  let res = await fetch("https://api.lyrics.ovh/suggest/" + q);
+  let data = await res.json();
+
+  let html = "";
+
+  data.data.slice(0, 10).forEach(c => {
+    html += `<div class="resultado" onclick="ver('${c.artist.name}','${c.title}')">
+      ${c.artist.name} - ${c.title}
+    </div>`;
+  });
+
+  document.getElementById("resultados").innerHTML = html;
+}
+
+async function ver(artista, tema) {
+  let res = await fetch(`https://api.lyrics.ovh/v1/${artista}/${tema}`);
+  let data = await res.json();
+
+  document.getElementById("letra").innerText = data.lyrics || "No se encontró la letra";
 }
 </script>
 
