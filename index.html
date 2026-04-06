@@ -13,7 +13,13 @@ body { font-family: Arial; padding: 10px; }
 
 textarea {
   width: 100%;
-  height: 300px;
+  height: 400px;
+  font-size: 16px;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
 }
 
 .cancion {
@@ -31,6 +37,15 @@ textarea {
   font-size: 18px;
 }
 
+.acorde {
+  color: red;
+  font-weight: bold;
+}
+
+img {
+  max-width: 100%;
+  margin-top: 10px;
+}
 </style>
 </head>
 <body>
@@ -45,7 +60,10 @@ textarea {
 <!-- EDITOR -->
 <div id="editor">
   <input id="titulo" placeholder="Nombre de la canción">
-  <textarea id="contenido" placeholder="Pegá letra + acordes"></textarea>
+  <textarea id="contenido" placeholder="Pegá letra + acordes ([Am] ejemplo)"></textarea>
+
+  <input type="file" id="imagen">
+
   <button onclick="guardar()">Guardar</button>
 </div>
 
@@ -61,21 +79,22 @@ textarea {
 
   <br><br>
 
-  Velocidad scroll:
-  <input type="range" min="10" max="200" value="80" id="velocidad">
+  <button onclick="imprimir()">🖨 Imprimir / PDF</button>
+
+  <div id="visor"></div>
+
+  <div id="imagenes"></div>
 
   <br>
 
-  <button onclick="autoScroll()">▶ Auto Scroll</button>
-  <button onclick="detenerScroll()">⏹ Parar</button>
-
-  <div id="visor"></div>
+  <button onclick="editar()">✏️ Editar</button>
+  <button onclick="borrar()">❌ Borrar</button>
 
 </div>
 
 <script>
 let canciones = JSON.parse(localStorage.getItem("canciones")) || [];
-let scrollInterval;
+let actual = null;
 
 function mostrarTab(tab) {
   document.getElementById("editor").style.display = tab === "editor" ? "block" : "none";
@@ -88,13 +107,24 @@ function guardar() {
 
   if (!titulo || !contenido) return;
 
-  canciones.push({ titulo, contenido });
-  localStorage.setItem("canciones", JSON.stringify(canciones));
+  let file = document.getElementById("imagen").files[0];
+
+  if (file) {
+    let reader = new FileReader();
+    reader.onload = function(e) {
+      canciones.push({ titulo, contenido, imagen: e.target.result });
+      localStorage.setItem("canciones", JSON.stringify(canciones));
+      mostrar();
+    };
+    reader.readAsDataURL(file);
+  } else {
+    canciones.push({ titulo, contenido });
+    localStorage.setItem("canciones", JSON.stringify(canciones));
+    mostrar();
+  }
 
   document.getElementById("titulo").value = "";
   document.getElementById("contenido").value = "";
-
-  mostrar();
 }
 
 function mostrar() {
@@ -107,26 +137,54 @@ function mostrar() {
   document.getElementById("canciones").innerHTML = html;
 }
 
+function formatear(texto) {
+  return texto.replace(/\[(.*?)\]/g, '<span class="acorde">[$1]</span>');
+}
+
 function ver(i) {
-  document.getElementById("visor").innerText = canciones[i].contenido;
+  actual = i;
+
+  document.getElementById("visor").innerHTML = formatear(canciones[i].contenido);
+
+  if (canciones[i].imagen) {
+    document.getElementById("imagenes").innerHTML =
+      `<img src="${canciones[i].imagen}">`;
+  } else {
+    document.getElementById("imagenes").innerHTML = "";
+  }
 }
 
 function cambiarTamaño(size) {
   document.getElementById("visor").style.fontSize = size + "px";
 }
 
-function autoScroll() {
-  detenerScroll();
+function editar() {
+  if (actual === null) return;
 
-  let velocidad = document.getElementById("velocidad").value;
+  mostrarTab('editor');
 
-  scrollInterval = setInterval(() => {
-    document.getElementById("visor").scrollTop += 1;
-  }, velocidad);
+  document.getElementById("titulo").value = canciones[actual].titulo;
+  document.getElementById("contenido").value = canciones[actual].contenido;
+
+  canciones.splice(actual, 1);
+  localStorage.setItem("canciones", JSON.stringify(canciones));
+  mostrar();
 }
 
-function detenerScroll() {
-  clearInterval(scrollInterval);
+function borrar() {
+  if (actual === null) return;
+
+  canciones.splice(actual, 1);
+  localStorage.setItem("canciones", JSON.stringify(canciones));
+
+  document.getElementById("visor").innerHTML = "";
+  document.getElementById("imagenes").innerHTML = "";
+
+  mostrar();
+}
+
+function imprimir() {
+  window.print();
 }
 
 mostrar();
