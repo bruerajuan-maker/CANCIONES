@@ -6,20 +6,12 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
-.tabs button {
-  padding: 10px;
-  margin: 5px;
-}
+.tabs button { padding: 10px; margin: 5px; }
 
 textarea {
   width: 100%;
   height: 400px;
   font-size: 16px;
-}
-
-input {
-  width: 100%;
-  padding: 8px;
 }
 
 .cancion {
@@ -44,7 +36,13 @@ input {
 
 img {
   max-width: 100%;
-  margin-top: 10px;
+  margin: 10px 0;
+}
+
+/* SOLO IMPRIMIR CANCIÓN */
+@media print {
+  body * { display: none; }
+  #zonaImprimir, #zonaImprimir * { display: block; }
 }
 </style>
 </head>
@@ -60,9 +58,9 @@ img {
 <!-- EDITOR -->
 <div id="editor">
   <input id="titulo" placeholder="Nombre de la canción">
-  <textarea id="contenido" placeholder="Pegá letra + acordes ([Am] ejemplo)"></textarea>
+  <textarea id="contenido" placeholder="Pegá letra + acordes ([Am])"></textarea>
 
-  <input type="file" id="imagen">
+  <p>📷 Pegá imágenes con CTRL + V</p>
 
   <button onclick="guardar()">Guardar</button>
 </div>
@@ -79,11 +77,17 @@ img {
 
   <br><br>
 
-  <button onclick="imprimir()">🖨 Imprimir / PDF</button>
+  Color acordes:
+  <input type="color" onchange="cambiarColor(this.value)">
 
-  <div id="visor"></div>
+  <br><br>
 
-  <div id="imagenes"></div>
+  <button onclick="imprimir()">🖨 PDF / Imprimir</button>
+
+  <div id="zonaImprimir">
+    <div id="visor"></div>
+    <div id="imagenes"></div>
+  </div>
 
   <br>
 
@@ -95,6 +99,8 @@ img {
 <script>
 let canciones = JSON.parse(localStorage.getItem("canciones")) || [];
 let actual = null;
+let imagenesTemp = [];
+let colorAcordes = "red";
 
 function mostrarTab(tab) {
   document.getElementById("editor").style.display = tab === "editor" ? "block" : "none";
@@ -107,24 +113,16 @@ function guardar() {
 
   if (!titulo || !contenido) return;
 
-  let file = document.getElementById("imagen").files[0];
+  canciones.push({ titulo, contenido, imagenes: imagenesTemp });
 
-  if (file) {
-    let reader = new FileReader();
-    reader.onload = function(e) {
-      canciones.push({ titulo, contenido, imagen: e.target.result });
-      localStorage.setItem("canciones", JSON.stringify(canciones));
-      mostrar();
-    };
-    reader.readAsDataURL(file);
-  } else {
-    canciones.push({ titulo, contenido });
-    localStorage.setItem("canciones", JSON.stringify(canciones));
-    mostrar();
-  }
+  localStorage.setItem("canciones", JSON.stringify(canciones));
+
+  imagenesTemp = [];
 
   document.getElementById("titulo").value = "";
   document.getElementById("contenido").value = "";
+
+  mostrar();
 }
 
 function mostrar() {
@@ -138,7 +136,7 @@ function mostrar() {
 }
 
 function formatear(texto) {
-  return texto.replace(/\[(.*?)\]/g, '<span class="acorde">[$1]</span>');
+  return texto.replace(/\[(.*?)\]/g, `<span class="acorde" style="color:${colorAcordes}">[$1]</span>`);
 }
 
 function ver(i) {
@@ -146,16 +144,21 @@ function ver(i) {
 
   document.getElementById("visor").innerHTML = formatear(canciones[i].contenido);
 
-  if (canciones[i].imagen) {
-    document.getElementById("imagenes").innerHTML =
-      `<img src="${canciones[i].imagen}">`;
-  } else {
-    document.getElementById("imagenes").innerHTML = "";
-  }
+  let imgs = "";
+  (canciones[i].imagenes || []).forEach(img => {
+    imgs += `<img src="${img}">`;
+  });
+
+  document.getElementById("imagenes").innerHTML = imgs;
 }
 
 function cambiarTamaño(size) {
   document.getElementById("visor").style.fontSize = size + "px";
+}
+
+function cambiarColor(color) {
+  colorAcordes = color;
+  if (actual !== null) ver(actual);
 }
 
 function editar() {
@@ -186,6 +189,24 @@ function borrar() {
 function imprimir() {
   window.print();
 }
+
+/* PEGAR IMAGENES */
+document.addEventListener("paste", function(e) {
+  let items = e.clipboardData.items;
+
+  for (let i = 0; i < items.length; i++) {
+    if (items[i].type.indexOf("image") !== -1) {
+      let blob = items[i].getAsFile();
+      let reader = new FileReader();
+
+      reader.onload = function(event) {
+        imagenesTemp.push(event.target.result);
+      };
+
+      reader.readAsDataURL(blob);
+    }
+  }
+});
 
 mostrar();
 </script>
