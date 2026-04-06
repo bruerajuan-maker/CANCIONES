@@ -4,22 +4,35 @@
 <meta charset="UTF-8">
 <title>Buscador de canciones</title>
 <style>
-body { font-family: Arial; padding: 20px; }
-input { padding: 10px; width: 70%; }
-button { padding: 10px; }
+body {
+  font-family: Arial;
+  padding: 20px;
+}
+
+input {
+  padding: 10px;
+  width: 70%;
+  font-size: 16px;
+}
+
+button {
+  padding: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
 </style>
 </head>
 <body>
 
-<h2>🎸 Buscar canciones</h2>
+<h2>🎸 Buscador de canciones</h2>
 
-<input id="busqueda" placeholder="Ej: soda stereo">
+<input id="busqueda" placeholder="Ej: los piojos">
 <button onclick="buscar()">Buscar</button>
 
 <script>
 function buscar() {
   let q = document.getElementById("busqueda").value;
-  let url = "https://acordes.lacuerda.net/busca.php?texto=" + encodeURIComponent(q);
+  let url = "https://www.google.com/search?q=site:lacuerda.net+" + encodeURIComponent(q);
   window.open(url, "_blank");
 }
 </script>
