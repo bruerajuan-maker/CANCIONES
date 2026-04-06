@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Buscador de canciones</title>
+<title>Cancionero</title>
 <style>
 body {
   font-family: Arial;
@@ -24,16 +24,22 @@ button {
   border-bottom: 1px solid #ccc;
   cursor: pointer;
 }
+
+#letra {
+  margin-top: 20px;
+  white-space: pre-wrap;
+}
 </style>
 </head>
 <body>
 
-<h2>🎸 Buscar canciones</h2>
+<h2>🎸 Cancionero</h2>
 
-<input id="busqueda" placeholder="Ej: los piojos">
+<input id="busqueda" placeholder="Ej: soda stereo">
 <button onclick="buscar()">Buscar</button>
 
 <div id="resultados"></div>
+<div id="letra"></div>
 
 <script>
 async function buscar() {
@@ -45,18 +51,21 @@ async function buscar() {
   let html = "";
 
   data.data.slice(0, 10).forEach(c => {
-    html += `<div class="resultado" onclick="abrir('${c.artist.name}','${c.title}')">
+    html += `<div class="resultado" onclick="ver('${c.artist.name}','${c.title}')">
       ${c.artist.name} - ${c.title}
     </div>`;
   });
 
   document.getElementById("resultados").innerHTML = html;
+  document.getElementById("letra").innerHTML = "";
 }
 
-function abrir(artista, tema) {
-  let busqueda = artista + " " + tema + " acordes";
-  let url = "https://www.google.com/search?q=" + encodeURIComponent(busqueda);
-  window.open(url, "_blank");
+async function ver(artista, tema) {
+  let res = await fetch(`https://api.lyrics.ovh/v1/${artista}/${tema}`);
+  let data = await res.json();
+
+  document.getElementById("letra").innerText =
+    data.lyrics || "No se encontró la letra";
 }
 </script>
 
