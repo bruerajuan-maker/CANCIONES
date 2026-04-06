@@ -2,19 +2,18 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Mi Cancionero</title>
+<title>Mi Cancionero PRO</title>
 <style>
-body { font-family: Arial; padding: 20px; }
+body { font-family: Arial; padding: 10px; }
 
-input, textarea {
-  width: 100%;
+.tabs button {
   padding: 10px;
-  margin: 5px 0;
+  margin: 5px;
 }
 
-button {
-  padding: 10px;
-  margin: 5px 0;
+textarea {
+  width: 100%;
+  height: 150px;
 }
 
 .cancion {
@@ -22,26 +21,59 @@ button {
   border-bottom: 1px solid #ccc;
   padding: 5px;
 }
+
+#visor {
+  white-space: pre-wrap;
+  border: 1px solid #ccc;
+  padding: 10px;
+  height: 300px;
+  overflow-y: auto;
+  font-size: 18px;
+}
+
 </style>
 </head>
 <body>
 
 <h2>🎸 Mi Cancionero</h2>
 
-<input id="titulo" placeholder="Nombre de la canción">
+<div class="tabs">
+  <button onclick="mostrarTab('editor')">Editor</button>
+  <button onclick="mostrarTab('lista')">Cancionero</button>
+</div>
 
-<textarea id="contenido" rows="8" placeholder="Pegá letra + acordes"></textarea>
+<!-- EDITOR -->
+<div id="editor">
+  <input id="titulo" placeholder="Nombre de la canción">
+  <textarea id="contenido" placeholder="Pegá letra + acordes"></textarea>
+  <button onclick="guardar()">Guardar</button>
+</div>
 
-<button onclick="guardar()">Guardar canción</button>
+<!-- LISTA -->
+<div id="lista" style="display:none;">
+  <div id="canciones"></div>
+</div>
 
-<h3>Mis canciones</h3>
-<div id="lista"></div>
+<!-- VISOR -->
+<h3>Vista</h3>
+<div>
+  Tamaño letra:
+  <input type="range" min="12" max="40" value="18" oninput="cambiarTamaño(this.value)">
+</div>
 
-<h3>Ver canción</h3>
-<pre id="visor"></pre>
+<button onclick="autoScroll()">▶ Auto Scroll</button>
+<button onclick="detenerScroll()">⏹ Parar</button>
+
+<div id="visor"></div>
 
 <script>
 let canciones = JSON.parse(localStorage.getItem("canciones")) || [];
+let scrollInterval;
+
+function mostrarTab(tab) {
+  document.getElementById("editor").style.display = tab === "editor" ? "block" : "none";
+  document.getElementById("lista").style.display = tab === "lista" ? "block" : "none";
+}
 
 function guardar() {
   let titulo = document.getElementById("titulo").value;
@@ -65,11 +97,26 @@ function mostrar() {
     html += `<div class="cancion" onclick="ver(${i})">${c.titulo}</div>`;
   });
 
-  document.getElementById("lista").innerHTML = html;
+  document.getElementById("canciones").innerHTML = html;
 }
 
 function ver(i) {
   document.getElementById("visor").innerText = canciones[i].contenido;
+}
+
+function cambiarTamaño(size) {
+  document.getElementById("visor").style.fontSize = size + "px";
+}
+
+function autoScroll() {
+  detenerScroll();
+  scrollInterval = setInterval(() => {
+    document.getElementById("visor").scrollTop += 1;
+  }, 50);
+}
+
+function detenerScroll() {
+  clearInterval(scrollInterval);
 }
 
 mostrar();
