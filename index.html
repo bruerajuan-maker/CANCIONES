@@ -7,11 +7,11 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
-.tabs button { padding: 10px; margin: 5px; }
+button { margin: 5px; padding: 8px; }
 
 textarea {
   width: 100%;
-  height: 350px;
+  height: 300px;
 }
 
 .cancion {
@@ -47,7 +47,6 @@ img {
   color: red;
   font-weight: bold;
 }
-
 </style>
 </head>
 
@@ -92,10 +91,10 @@ let canciones = JSON.parse(localStorage.getItem("canciones")) || [];
 let actual = null;
 let imgsTemp = [];
 
-// cambiar pestañas
+// pestañas
 function tab(t){
   document.getElementById("editor").style.display = t==="editor"?"block":"none";
-  document.getElementById("lista").style.display = t==="lista"?"block":"block";
+  document.getElementById("lista").style.display = t==="lista"?"block":"none";
 }
 
 // guardar
@@ -115,15 +114,22 @@ function guardar(){
   mostrar();
 }
 
-// mostrar lista
+// mostrar lista (ARREGLADO)
 function mostrar(){
-  let html = "";
+  let contenedor = document.getElementById("canciones");
+  contenedor.innerHTML = "";
 
-  canciones.forEach((c,i)=>{
-    html += `<div class="cancion" onclick="ver(${i})">${c.titulo}</div>`;
+  canciones.forEach((c, i) => {
+    let div = document.createElement("div");
+    div.className = "cancion";
+    div.innerText = c.titulo;
+
+    div.onclick = function() {
+      ver(i);
+    };
+
+    contenedor.appendChild(div);
   });
-
-  document.getElementById("canciones").innerHTML = html;
 }
 
 // ver canción
