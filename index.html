@@ -2,49 +2,94 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Cancionero PRO</title>
+<title>Cancionero</title>
 <style>
-body { font-family: Arial; padding: 20px; }
-
-.linea {
-  position: relative;
-  margin-bottom: 30px;
+body {
+  font-family: monospace;
+  padding: 20px;
 }
 
-.letra {
-  font-size: 18px;
+textarea {
+  width: 100%;
+  height: 150px;
+  font-size: 16px;
 }
 
-.acorde {
-  position: absolute;
-  top: -20px;
-  color: red;
-  font-weight: bold;
+button {
+  margin-top: 10px;
+  padding: 10px;
+}
+
+pre {
+  background: #f4f4f4;
+  padding: 10px;
+  white-space: pre-wrap;
 }
 </style>
 </head>
 <body>
 
-<h2>🎸 Editor de canciones</h2>
+<h2>🎸 Cancionero</h2>
 
-<div class="linea" onclick="agregarAcorde(event)">
-  <div class="letra">Hoy te vi pasar</div>
-</div>
+<textarea id="texto" placeholder="Pegá o escribí la canción acá"></textarea>
+
+<br>
+
+<input id="acorde" placeholder="Ej: Am">
+<button onclick="insertar()">Insertar acorde</button>
+
+<h3>Vista</h3>
+<pre id="vista"></pre>
 
 <script>
-function agregarAcorde(e) {
-  let acorde = prompt("Acorde:");
+function insertar() {
+  let texto = document.getElementById("texto");
+  let acorde = document.getElementById("acorde").value;
 
-  if (!acorde) return;
+  let inicio = texto.selectionStart;
 
-  let nuevo = document.createElement("div");
-  nuevo.className = "acorde";
-  nuevo.innerText = acorde;
+  let nuevo =
+    texto.value.substring(0, inicio) +
+    "[" + acorde + "]" +
+    texto.value.substring(inicio);
 
-  nuevo.style.left = e.offsetX + "px";
+  texto.value = nuevo;
 
-  e.currentTarget.appendChild(nuevo);
+  mostrar();
 }
+
+function mostrar() {
+  let t = document.getElementById("texto").value;
+
+  let salida = "";
+  let lineaAcordes = "";
+  let lineaTexto = "";
+
+  for (let i = 0; i < t.length; i++) {
+    if (t[i] === "[") {
+      let fin = t.indexOf("]", i);
+      let acorde = t.substring(i + 1, fin);
+
+      lineaAcordes += acorde.padEnd(4, " ");
+      i = fin;
+    } else {
+      lineaTexto += t[i];
+      lineaAcordes += " ";
+    }
+
+    if (t[i] === "\n") {
+      salida += lineaAcordes + "\n" + lineaTexto + "\n";
+      lineaAcordes = "";
+      lineaTexto = "";
+    }
+  }
+
+  salida += lineaAcordes + "\n" + lineaTexto;
+
+  document.getElementById("vista").innerText = salida;
+}
+
+document.getElementById("texto").addEventListener("input", mostrar);
 </script>
 
 </body>
