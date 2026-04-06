@@ -2,70 +2,48 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Cancionero</title>
+<title>Cancionero PRO</title>
 <style>
-body {
-  font-family: Arial;
-  padding: 20px;
+body { font-family: Arial; padding: 20px; }
+
+.linea {
+  position: relative;
+  margin-bottom: 30px;
 }
 
-input {
-  padding: 10px;
-  width: 70%;
+.letra {
+  font-size: 18px;
 }
 
-button {
-  padding: 10px;
-}
-
-.resultado {
-  margin-top: 10px;
-  padding: 10px;
-  border-bottom: 1px solid #ccc;
-  cursor: pointer;
-}
-
-#letra {
-  margin-top: 20px;
-  white-space: pre-wrap;
+.acorde {
+  position: absolute;
+  top: -20px;
+  color: red;
+  font-weight: bold;
 }
 </style>
 </head>
 <body>
 
-<h2>🎸 Cancionero</h2>
+<h2>🎸 Editor de canciones</h2>
 
-<input id="busqueda" placeholder="Ej: soda stereo">
-<button onclick="buscar()">Buscar</button>
-
-<div id="resultados"></div>
-<div id="letra"></div>
+<div class="linea" onclick="agregarAcorde(event)">
+  <div class="letra">Hoy te vi pasar</div>
+</div>
 
 <script>
-async function buscar() {
-  let q = document.getElementById("busqueda").value;
+function agregarAcorde(e) {
+  let acorde = prompt("Acorde:");
 
-  let res = await fetch("https://api.lyrics.ovh/suggest/" + q);
-  let data = await res.json();
+  if (!acorde) return;
 
-  let html = "";
+  let nuevo = document.createElement("div");
+  nuevo.className = "acorde";
+  nuevo.innerText = acorde;
 
-  data.data.slice(0, 10).forEach(c => {
-    html += `<div class="resultado" onclick="ver('${c.artist.name}','${c.title}')">
-      ${c.artist.name} - ${c.title}
-    </div>`;
-  });
+  nuevo.style.left = e.offsetX + "px";
 
-  document.getElementById("resultados").innerHTML = html;
-  document.getElementById("letra").innerHTML = "";
-}
-
-async function ver(artista, tema) {
-  let res = await fetch(`https://api.lyrics.ovh/v1/${artista}/${tema}`);
-  let data = await res.json();
-
-  document.getElementById("letra").innerText =
-    data.lyrics || "No se encontró la letra";
+  e.currentTarget.appendChild(nuevo);
 }
 </script>
 
