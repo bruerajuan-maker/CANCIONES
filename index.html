@@ -2,94 +2,77 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Cancionero</title>
+<title>Mi Cancionero</title>
 <style>
-body {
-  font-family: monospace;
-  padding: 20px;
-}
+body { font-family: Arial; padding: 20px; }
 
-textarea {
+input, textarea {
   width: 100%;
-  height: 150px;
-  font-size: 16px;
+  padding: 10px;
+  margin: 5px 0;
 }
 
 button {
-  margin-top: 10px;
   padding: 10px;
+  margin: 5px 0;
 }
 
-pre {
-  background: #f4f4f4;
-  padding: 10px;
-  white-space: pre-wrap;
+.cancion {
+  cursor: pointer;
+  border-bottom: 1px solid #ccc;
+  padding: 5px;
 }
 </style>
 </head>
 <body>
 
-<h2>🎸 Cancionero</h2>
+<h2>🎸 Mi Cancionero</h2>
 
-<textarea id="texto" placeholder="Pegá o escribí la canción acá"></textarea>
+<input id="titulo" placeholder="Nombre de la canción">
 
-<br>
+<textarea id="contenido" rows="8" placeholder="Pegá letra + acordes"></textarea>
 
-<input id="acorde" placeholder="Ej: Am">
-<button onclick="insertar()">Insertar acorde</button>
+<button onclick="guardar()">Guardar canción</button>
 
-<h3>Vista</h3>
-<pre id="vista"></pre>
+<h3>Mis canciones</h3>
+<div id="lista"></div>
+
+<h3>Ver canción</h3>
+<pre id="visor"></pre>
 
 <script>
-function insertar() {
-  let texto = document.getElementById("texto");
-  let acorde = document.getElementById("acorde").value;
+let canciones = JSON.parse(localStorage.getItem("canciones")) || [];
 
-  let inicio = texto.selectionStart;
+function guardar() {
+  let titulo = document.getElementById("titulo").value;
+  let contenido = document.getElementById("contenido").value;
 
-  let nuevo =
-    texto.value.substring(0, inicio) +
-    "[" + acorde + "]" +
-    texto.value.substring(inicio);
+  if (!titulo || !contenido) return;
 
-  texto.value = nuevo;
+  canciones.push({ titulo, contenido });
+  localStorage.setItem("canciones", JSON.stringify(canciones));
+
+  document.getElementById("titulo").value = "";
+  document.getElementById("contenido").value = "";
 
   mostrar();
 }
 
 function mostrar() {
-  let t = document.getElementById("texto").value;
+  let html = "";
 
-  let salida = "";
-  let lineaAcordes = "";
-  let lineaTexto = "";
+  canciones.forEach((c, i) => {
+    html += `<div class="cancion" onclick="ver(${i})">${c.titulo}</div>`;
+  });
 
-  for (let i = 0; i < t.length; i++) {
-    if (t[i] === "[") {
-      let fin = t.indexOf("]", i);
-      let acorde = t.substring(i + 1, fin);
-
-      lineaAcordes += acorde.padEnd(4, " ");
-      i = fin;
-    } else {
-      lineaTexto += t[i];
-      lineaAcordes += " ";
-    }
-
-    if (t[i] === "\n") {
-      salida += lineaAcordes + "\n" + lineaTexto + "\n";
-      lineaAcordes = "";
-      lineaTexto = "";
-    }
-  }
-
-  salida += lineaAcordes + "\n" + lineaTexto;
-
-  document.getElementById("vista").innerText = salida;
+  document.getElementById("lista").innerHTML = html;
 }
 
-document.getElementById("texto").addEventListener("input", mostrar);
+function ver(i) {
+  document.getElementById("visor").innerText = canciones[i].contenido;
+}
+
+mostrar();
 </script>
 
 </body>
