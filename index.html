@@ -12,6 +12,7 @@ body { font-family: Arial; padding: 10px; }
 
 button { margin: 3px; }
 
+/* EDITOR */
 #editorTexto {
   border:1px solid #ccc;
   height: 70vh;
@@ -20,6 +21,7 @@ button { margin: 3px; }
   overflow:auto;
 }
 
+/* VISOR */
 #visor {
   border:1px solid #ccc;
   padding:20px;
@@ -29,40 +31,24 @@ button { margin: 3px; }
   font-size:20px;
 }
 
-.fullscreen {
-  position: fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:white;
-  z-index:9999;
-  padding:40px;
-  font-size:28px;
-}
-
-#salirFull {
-  position: fixed;
-  top:10px;
-  right:10px;
-  background:red;
-  color:white;
+/* TABS (SOLAPAS REALES) */
+.tab {
+  display:inline-block;
   padding:10px;
-  display:none;
-  z-index:10000;
+  border:1px solid #ccc;
+  cursor:pointer;
+  margin-right:5px;
 }
 
+.tab.activa {
+  background:black;
+  color:white;
+}
+
+/* lista */
 .cancion {
   padding: 5px;
   border-bottom: 1px solid #ccc;
-}
-
-.categoria {
-  margin:5px;
-  padding:5px;
-  border:1px solid #ccc;
-  display:inline-block;
-  cursor:pointer;
 }
 </style>
 </head>
@@ -74,6 +60,7 @@ button { margin: 3px; }
 <button onclick="tab('editor')">Editor</button>
 <button onclick="tab('lista')">Cancionero</button>
 
+<!-- EDITOR -->
 <div id="editor">
 
 <input id="titulo" placeholder="Título"><br><br>
@@ -98,23 +85,16 @@ button { margin: 3px; }
 
 </div>
 
+<!-- LISTA -->
 <div id="lista" style="display:none;">
 
-<div id="filtros"></div>
+<div id="tabs"></div> <!-- 🔥 SOLAPAS -->
 
 <div id="canciones"></div>
 
 <div id="visor"></div>
 
-<button onclick="pantallaCompleta()">Pantalla completa</button>
-
-<br><br>
-<button onclick="editar()">Editar</button>
-<button onclick="borrar()">Borrar</button>
-
 </div>
-
-<button id="salirFull" onclick="salirPantalla()">SALIR</button>
 
 <script>
 // FIREBASE
@@ -127,8 +107,6 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let actualID=null;
-let actualData=null;
 let categoriaActual=null;
 let categorias=[];
 
@@ -153,39 +131,49 @@ function cmdSize(size){
   }
 }
 
-// categorias
+// CREAR CATEGORIA
 function crearCategoria(){
   let nombre = nuevaCat.value;
   if(!nombre) return;
 
   categorias.push(nombre);
-  actualizarCategorias();
   nuevaCat.value="";
+  actualizarTabs();
 }
 
-function actualizarCategorias(){
+// CREAR TABS VISUALES
+function actualizarTabs(){
+  tabs.innerHTML="";
   categoria.innerHTML="";
-  filtros.innerHTML="";
 
   categorias.forEach(cat=>{
+    // select
     let op=document.createElement("option");
     op.value=cat;
     op.innerText=cat;
     categoria.appendChild(op);
 
-    let f=document.createElement("div");
-    f.className="categoria";
-    f.innerText=cat;
-    f.onclick=()=>{
+    // TAB VISUAL
+    let t=document.createElement("div");
+    t.className="tab";
+    t.innerText=cat;
+
+    t.onclick=()=>{
       categoriaActual=cat;
+      marcarTab(t);
       cargar();
     };
-    filtros.appendChild(f);
-  });
 
-  // 🔥 mostrar todas por defecto
-  categoriaActual=null;
-  cargar();
+    tabs.appendChild(t);
+  });
+}
+
+// marcar activa
+function marcarTab(tabClick){
+  let todos=document.querySelectorAll(".tab");
+  todos.forEach(t=>t.classList.remove("activa"));
+
+  tabClick.classList.add("activa");
 }
 
 // guardar
@@ -202,7 +190,7 @@ function guardar(){
   editorTexto.innerHTML="";
 }
 
-// cargar canciones (ARREGLADO)
+// cargar canciones FILTRADAS
 function cargar(){
   db.collection("canciones").get().then(snapshot=>{
     cancionesDiv.innerHTML="";
@@ -210,7 +198,8 @@ function cargar(){
     snapshot.forEach(doc=>{
       let d=doc.data();
 
-      if(categoriaActual && d.cat !== categoriaActual) return;
+      if(!categoriaActual) return;
+      if(d.cat !== categoriaActual) return;
 
       let div=document.createElement("div");
       div.className="cancion";
@@ -223,51 +212,11 @@ function cargar(){
   });
 }
 
-cargar();
-
 // ver
 function ver(id){
   db.collection("canciones").doc(id).get().then(doc=>{
-    actualID=id;
-    actualData=doc.data();
-    visor.innerHTML=actualData.texto;
+    visor.innerHTML=doc.data().texto;
   });
-}
-
-// fullscreen
-function pantallaCompleta(){
-  visor.classList.add("fullscreen");
-  salirFull.style.display="block";
-}
-
-function salirPantalla(){
-  visor.classList.remove("fullscreen");
-  salirFull.style.display="none";
-}
-
-document.addEventListener("keydown", e=>{
-  if(e.key==="Escape") salirPantalla();
-});
-
-// borrar
-function borrar(){
-  if(!actualID) return;
-  db.collection("canciones").doc(actualID).delete();
-  visor.innerHTML="";
-  cargar();
-}
-
-// editar
-function editar(){
-  if(!actualID) return;
-
-  tab("editor");
-
-  tituloInput.value=actualData.titulo;
-  editorTexto.innerHTML=actualData.texto;
-
-  db.collection("canciones").doc(actualID).delete();
-  cargar();
 }
 
 // refs
@@ -277,8 +226,7 @@ let visor=document.getElementById("visor");
 let editorTexto=document.getElementById("editorTexto");
 let categoria=document.getElementById("categoria");
 let nuevaCat=document.getElementById("nuevaCat");
-let filtros=document.getElementById("filtros");
-let salirFull=document.getElementById("salirFull");
+let tabs=document.getElementById("tabs");
 </script>
 
 </body>
