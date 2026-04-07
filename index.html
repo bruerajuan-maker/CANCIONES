@@ -10,39 +10,26 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
-/* CONTENEDOR EDITOR */
-#editorContainer {
-  display: flex;
-  gap: 10px;
-}
-
-/* TEXTO */
+/* editor */
 #editorTexto {
-  flex: 2;
   border:1px solid #ccc;
-  height: 70vh;
+  height: 60vh;
   padding:10px;
   background:white;
   overflow:auto;
 }
 
-/* IMAGENES */
-#panelImagenes {
-  flex: 1;
-  border:1px solid #ccc;
-  height: 70vh;
-  padding:10px;
-  background:#f5f5f5;
-  overflow:auto;
+/* imagenes */
+#imagenes {
+  margin-top:10px;
 }
 
 .imgItem {
-  max-width: 100%;
-  margin-bottom:10px;
-  cursor: pointer;
+  max-width:150px;
+  margin:5px;
 }
 
-/* VISOR */
+/* visor */
 #visor {
   border:1px solid #ccc;
   padding:20px;
@@ -50,16 +37,6 @@ body { font-family: Arial; padding: 10px; }
   height: 70vh;
   overflow:auto;
   font-size:20px;
-  display:flex;
-  gap:10px;
-}
-
-#visorTexto {
-  flex:2;
-}
-
-#visorImgs {
-  flex:1;
 }
 
 button { margin: 3px; }
@@ -92,15 +69,13 @@ button { margin: 3px; }
 
 <br><br>
 
-<div id="editorContainer">
-
 <div id="editorTexto" contenteditable="true"></div>
 
-<div id="panelImagenes">
-  <p>📷 Pegá imágenes acá (CTRL+V)</p>
-</div>
+<br>
 
-</div>
+<input type="file" id="fileInput" accept="image/*">
+
+<div id="imagenes"></div>
 
 <br>
 <button onclick="guardar()">Guardar</button>
@@ -112,10 +87,7 @@ button { margin: 3px; }
 
 <div id="canciones"></div>
 
-<div id="visor">
-  <div id="visorTexto"></div>
-  <div id="visorImgs"></div>
-</div>
+<div id="visor"></div>
 
 <br>
 <button onclick="editar()">Editar</button>
@@ -124,7 +96,7 @@ button { margin: 3px; }
 </div>
 
 <script>
-// FIREBASE
+// firebase
 const firebaseConfig = {
   apiKey: "AIzaSyBluLvO5UfzfMcadDfKtr30U3jhxsfBJKQ",
   authDomain: "cancionero-f0c5b.firebaseapp.com",
@@ -158,37 +130,31 @@ function cmdSize(size){
   }
 }
 
-// 📷 PEGAR IMAGEN SOLO EN PANEL DERECHO
-panelImagenes.addEventListener("paste", e=>{
-  let items = e.clipboardData.items;
+// cargar imagen
+fileInput.addEventListener("change", e=>{
+  let file = e.target.files[0];
+  if(!file) return;
 
-  for(let item of items){
-    if(item.type.includes("image")){
-      e.preventDefault();
+  let reader = new FileReader();
 
-      let file = item.getAsFile();
-      let reader = new FileReader();
+  reader.onload = ev=>{
+    let img=document.createElement("img");
+    img.src=ev.target.result;
+    img.className="imgItem";
 
-      reader.onload = ev=>{
-        let img = document.createElement("img");
-        img.src = ev.target.result;
-        img.className="imgItem";
+    imagenes.appendChild(img);
+  };
 
-        panelImagenes.appendChild(img);
-      };
-
-      reader.readAsDataURL(file);
-    }
-  }
+  reader.readAsDataURL(file);
 });
 
 // guardar
 function guardar(){
-  let titulo = tituloInput.value;
-  let texto = editorTexto.innerHTML;
+  let titulo=tituloInput.value;
+  let texto=editorTexto.innerHTML;
 
-  let imgs = [];
-  document.querySelectorAll("#panelImagenes img").forEach(i=>{
+  let imgs=[];
+  document.querySelectorAll("#imagenes img").forEach(i=>{
     imgs.push(i.src);
   });
 
@@ -198,7 +164,7 @@ function guardar(){
 
   tituloInput.value="";
   editorTexto.innerHTML="";
-  panelImagenes.innerHTML="📷 Pegá imágenes acá";
+  imagenes.innerHTML="";
 }
 
 // lista
@@ -224,15 +190,14 @@ function ver(id){
     actualID=id;
     actualData=doc.data();
 
-    visorTexto.innerHTML = actualData.texto;
+    visor.innerHTML=actualData.texto;
 
-    visorImgs.innerHTML="";
     if(actualData.imgs){
       actualData.imgs.forEach(src=>{
         let img=document.createElement("img");
         img.src=src;
-        img.style.maxWidth="100%";
-        visorImgs.appendChild(img);
+        img.style.maxWidth="200px";
+        visor.appendChild(img);
       });
     }
   });
@@ -253,13 +218,13 @@ function editar(){
   tituloInput.value=actualData.titulo;
   editorTexto.innerHTML=actualData.texto;
 
-  panelImagenes.innerHTML="";
+  imagenes.innerHTML="";
   if(actualData.imgs){
     actualData.imgs.forEach(src=>{
       let img=document.createElement("img");
       img.src=src;
       img.className="imgItem";
-      panelImagenes.appendChild(img);
+      imagenes.appendChild(img);
     });
   }
 
@@ -270,9 +235,9 @@ function editar(){
 let tituloInput=document.getElementById("titulo");
 let cancionesDiv=document.getElementById("canciones");
 let editorTexto=document.getElementById("editorTexto");
-let panelImagenes=document.getElementById("panelImagenes");
-let visorTexto=document.getElementById("visorTexto");
-let visorImgs=document.getElementById("visorImgs");
+let imagenes=document.getElementById("imagenes");
+let fileInput=document.getElementById("fileInput");
+let visor=document.getElementById("visor");
 </script>
 
 </body>
