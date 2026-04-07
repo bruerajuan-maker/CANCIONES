@@ -10,72 +10,52 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
-button { margin: 3px; }
-
-/* editor */
 #editorTexto {
   border:1px solid #ccc;
   height: 70vh;
   padding:10px;
   background:white;
-  overflow:auto;
   position: relative;
+  overflow:auto;
 }
 
-/* imágenes libres */
-.libre {
+img.libre {
   position: absolute;
-  max-width: 200px;
+  max-width: 150px;
   cursor: move;
 }
 
-/* lista */
 .cancion {
   padding: 5px;
   border-bottom: 1px solid #ccc;
-}
-
-#visor {
-  border:1px solid #ccc;
-  padding:10px;
-  margin-top:10px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🎸 Cancionero PRO</h2>
+<h2>🎸 Cancionero</h2>
 
 <button onclick="tab('editor')">Editor</button>
 <button onclick="tab('lista')">Cancionero</button>
 
 <div id="editor">
+  <input id="titulo" placeholder="Título"><br><br>
 
-<input id="titulo" placeholder="Título"><br><br>
+  <p>📷 Pegá imagen (CTRL+V) y arrastrala</p>
 
-<button onclick="cmd('bold')">B</button>
-<button onclick="cmd('italic')">I</button>
-<button onclick="cmd('underline')">U</button>
+  <div id="editorTexto" contenteditable="true"></div>
 
-<input type="color" onchange="cmdColor(this.value)">
-<input type="number" placeholder="Tamaño" onchange="cmdSize(this.value)">
-
-<p>📷 Pegá imagen (CTRL+V) y arrastrala</p>
-
-<div id="editorTexto" contenteditable="true"></div>
-
-<br>
-<button onclick="guardar()">Guardar</button>
-
+  <br>
+  <button onclick="guardar()">Guardar</button>
 </div>
 
 <div id="lista" style="display:none;">
   <div id="canciones"></div>
   <div id="visor"></div>
 
-  <button onclick="editar()">✏️ Editar</button>
-  <button onclick="borrar()">❌ Borrar</button>
+  <button onclick="editar()">Editar</button>
+  <button onclick="borrar()">Borrar</button>
 </div>
 
 <script>
@@ -84,16 +64,13 @@ const firebaseConfig = {
   apiKey: "AIzaSyBluLvO5UfzfMcadDfKtr30U3jhxsfBJKQ",
   authDomain: "cancionero-f0c5b.firebaseapp.com",
   projectId: "cancionero-f0c5b",
-  storageBucket: "cancionero-f0c5b.firebasestorage.app",
-  messagingSenderId: "80051908948",
-  appId: "1:80051908948:web:0b8a3b337df740299358c1"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let actualID = null;
-let actualData = null;
+let moviendo = null;
 
 // pestañas
 function tab(t){
@@ -101,23 +78,10 @@ function tab(t){
   lista.style.display = t==="lista"?"block":"none";
 }
 
-// texto
-function cmd(c){ document.execCommand(c,false,null); }
-function cmdColor(color){ document.execCommand("foreColor", false, color); }
+// pegar imagen SIN duplicar
+editorTexto.addEventListener("paste", e=>{
+  e.preventDefault();
 
-function cmdSize(size){
-  document.execCommand("fontSize", false, "7");
-  let fonts = document.getElementsByTagName("font");
-  for(let f of fonts){
-    if(f.size=="7"){
-      f.removeAttribute("size");
-      f.style.fontSize = size+"px";
-    }
-  }
-}
-
-// 📷 pegar imagen como flotante
-document.addEventListener("paste", e=>{
   let items = e.clipboardData.items;
 
   for(let item of items){
@@ -130,10 +94,8 @@ document.addEventListener("paste", e=>{
         img.src = ev.target.result;
         img.className = "libre";
 
-        img.style.top = "50px";
         img.style.left = "50px";
-
-        hacerMovible(img);
+        img.style.top = "50px";
 
         editorTexto.appendChild(img);
       };
@@ -143,55 +105,53 @@ document.addEventListener("paste", e=>{
   }
 });
 
-// mover imagen
-function hacerMovible(el){
-  let offsetX, offsetY, moving=false;
+// mover imagen (SIMPLE Y FUNCIONA)
+editorTexto.addEventListener("mousedown", e=>{
+  if(e.target.tagName==="IMG"){
+    moviendo = e.target;
+  }
+});
 
-  el.addEventListener("mousedown", e=>{
-    moving=true;
-    offsetX = e.offsetX;
-    offsetY = e.offsetY;
-  });
+document.addEventListener("mousemove", e=>{
+  if(!moviendo) return;
 
-  document.addEventListener("mousemove", e=>{
-    if(!moving) return;
+  let rect = editorTexto.getBoundingClientRect();
 
-    let rect = editorTexto.getBoundingClientRect();
+  moviendo.style.left = (e.clientX - rect.left - 50) + "px";
+  moviendo.style.top = (e.clientY - rect.top - 50) + "px";
+});
 
-    el.style.left = (e.clientX - rect.left - offsetX) + "px";
-    el.style.top = (e.clientY - rect.top - offsetY) + "px";
-  });
-
-  document.addEventListener("mouseup", ()=> moving=false);
-}
+document.addEventListener("mouseup", ()=>{
+  moviendo = null;
+});
 
 // guardar
 function guardar(){
-  let titulo = tituloInput.value;
+  let titulo = document.getElementById("titulo").value;
   let texto = editorTexto.innerHTML;
 
   if(!titulo || !texto) return;
 
   db.collection("canciones").add({ titulo, texto });
 
-  tituloInput.value="";
+  titulo.value="";
   editorTexto.innerHTML="";
 }
 
 // lista
 db.collection("canciones").onSnapshot(snapshot=>{
-  cancionesDiv.innerHTML="";
+  canciones.innerHTML="";
 
   snapshot.forEach(doc=>{
-    let data = doc.data();
+    let d = doc.data();
 
     let div=document.createElement("div");
     div.className="cancion";
 
-    div.innerHTML=`<b>${data.titulo}</b>
+    div.innerHTML=`${d.titulo}
     <button onclick="ver('${doc.id}')">Abrir</button>`;
 
-    cancionesDiv.appendChild(div);
+    canciones.appendChild(div);
   });
 });
 
@@ -199,8 +159,7 @@ db.collection("canciones").onSnapshot(snapshot=>{
 function ver(id){
   db.collection("canciones").doc(id).get().then(doc=>{
     actualID=id;
-    actualData=doc.data();
-    visor.innerHTML=actualData.texto;
+    visor.innerHTML=doc.data().texto;
   });
 }
 
@@ -216,21 +175,16 @@ function editar(){
   if(!actualID) return;
 
   tab("editor");
-  tituloInput.value=actualData.titulo;
-  editorTexto.innerHTML=actualData.texto;
 
-  // reactivar movimiento
-  let imgs = editorTexto.querySelectorAll("img");
-  imgs.forEach(img=>hacerMovible(img));
+  db.collection("canciones").doc(actualID).get().then(doc=>{
+    let d = doc.data();
+
+    titulo.value=d.titulo;
+    editorTexto.innerHTML=d.texto;
+  });
 
   db.collection("canciones").doc(actualID).delete();
 }
-
-// refs
-let tituloInput=document.getElementById("titulo");
-let cancionesDiv=document.getElementById("canciones");
-let visor=document.getElementById("visor");
-let editorTexto=document.getElementById("editorTexto");
 </script>
 
 </body>
