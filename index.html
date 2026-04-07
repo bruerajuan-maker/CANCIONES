@@ -10,37 +10,35 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
-/* BOTONES */
 button { margin: 3px; }
 
-/* EDITOR GRANDE */
+/* editor */
 #editorTexto {
   border:1px solid #ccc;
-  height: 70vh; /* 🔥 altura proporcional */
+  height: 70vh;
   padding:10px;
   background:white;
   overflow:auto;
+  position: relative;
 }
 
-/* LISTA */
+/* imágenes libres */
+.libre {
+  position: absolute;
+  max-width: 200px;
+  cursor: move;
+}
+
+/* lista */
 .cancion {
   padding: 5px;
   border-bottom: 1px solid #ccc;
 }
 
-/* VISOR */
 #visor {
   border:1px solid #ccc;
   padding:10px;
   margin-top:10px;
-}
-
-/* IMAGENES */
-#editorTexto img {
-  max-width: 200px;
-  cursor: pointer;
-  display:block;
-  margin:10px 0;
 }
 </style>
 </head>
@@ -52,12 +50,10 @@ button { margin: 3px; }
 <button onclick="tab('editor')">Editor</button>
 <button onclick="tab('lista')">Cancionero</button>
 
-<!-- EDITOR -->
 <div id="editor">
 
 <input id="titulo" placeholder="Título"><br><br>
 
-<!-- herramientas -->
 <button onclick="cmd('bold')">B</button>
 <button onclick="cmd('italic')">I</button>
 <button onclick="cmd('underline')">U</button>
@@ -65,17 +61,7 @@ button { margin: 3px; }
 <input type="color" onchange="cmdColor(this.value)">
 <input type="number" placeholder="Tamaño" onchange="cmdSize(this.value)">
 
-<br><br>
-
-<!-- IMAGEN CONTROLES -->
-<button onclick="alinear('left')">⬅️ Izq</button>
-<button onclick="alinear('center')">⬜ Centro</button>
-<button onclick="alinear('right')">➡️ Der</button>
-
-<button onclick="frente()">⬆️ Frente</button>
-<button onclick="fondo()">⬇️ Fondo</button>
-
-<p>📷 Pegá imágenes con CTRL + V y luego HACÉ CLICK en la imagen</p>
+<p>📷 Pegá imagen (CTRL+V) y arrastrala</p>
 
 <div id="editorTexto" contenteditable="true"></div>
 
@@ -84,13 +70,10 @@ button { margin: 3px; }
 
 </div>
 
-<!-- CANCIONERO -->
 <div id="lista" style="display:none;">
   <div id="canciones"></div>
-
   <div id="visor"></div>
 
-  <br>
   <button onclick="editar()">✏️ Editar</button>
   <button onclick="borrar()">❌ Borrar</button>
 </div>
@@ -111,7 +94,6 @@ const db = firebase.firestore();
 
 let actualID = null;
 let actualData = null;
-let imgSeleccionada = null;
 
 // pestañas
 function tab(t){
@@ -119,62 +101,68 @@ function tab(t){
   lista.style.display = t==="lista"?"block":"none";
 }
 
-// comandos texto
-function cmd(c){
-  document.execCommand(c,false,null);
-}
-
-function cmdColor(color){
-  document.execCommand("foreColor", false, color);
-}
+// texto
+function cmd(c){ document.execCommand(c,false,null); }
+function cmdColor(color){ document.execCommand("foreColor", false, color); }
 
 function cmdSize(size){
   document.execCommand("fontSize", false, "7");
-
   let fonts = document.getElementsByTagName("font");
-  for(let i=0;i<fonts.length;i++){
-    if(fonts[i].size=="7"){
-      fonts[i].removeAttribute("size");
-      fonts[i].style.fontSize = size+"px";
+  for(let f of fonts){
+    if(f.size=="7"){
+      f.removeAttribute("size");
+      f.style.fontSize = size+"px";
     }
   }
 }
 
-// 🔥 seleccionar imagen
-document.addEventListener("click", function(e){
-  if(e.target.tagName==="IMG"){
-    imgSeleccionada = e.target;
-    alert("Imagen seleccionada");
+// 📷 pegar imagen como flotante
+document.addEventListener("paste", e=>{
+  let items = e.clipboardData.items;
+
+  for(let item of items){
+    if(item.type.includes("image")){
+      let file = item.getAsFile();
+      let reader = new FileReader();
+
+      reader.onload = ev=>{
+        let img = document.createElement("img");
+        img.src = ev.target.result;
+        img.className = "libre";
+
+        img.style.top = "50px";
+        img.style.left = "50px";
+
+        hacerMovible(img);
+
+        editorTexto.appendChild(img);
+      };
+
+      reader.readAsDataURL(file);
+    }
   }
 });
 
 // mover imagen
-function alinear(pos){
-  if(!imgSeleccionada) return;
+function hacerMovible(el){
+  let offsetX, offsetY, moving=false;
 
-  imgSeleccionada.style.display = "block";
-  imgSeleccionada.style.margin = "10px auto";
+  el.addEventListener("mousedown", e=>{
+    moving=true;
+    offsetX = e.offsetX;
+    offsetY = e.offsetY;
+  });
 
-  if(pos==="left"){
-    imgSeleccionada.style.margin = "10px 0";
-  }
-  if(pos==="right"){
-    imgSeleccionada.style.margin = "10px 0 10px auto";
-  }
-}
+  document.addEventListener("mousemove", e=>{
+    if(!moving) return;
 
-// traer adelante
-function frente(){
-  if(!imgSeleccionada) return;
-  imgSeleccionada.style.position = "relative";
-  imgSeleccionada.style.zIndex = 10;
-}
+    let rect = editorTexto.getBoundingClientRect();
 
-// mandar atrás
-function fondo(){
-  if(!imgSeleccionada) return;
-  imgSeleccionada.style.position = "relative";
-  imgSeleccionada.style.zIndex = 0;
+    el.style.left = (e.clientX - rect.left - offsetX) + "px";
+    el.style.top = (e.clientY - rect.top - offsetY) + "px";
+  });
+
+  document.addEventListener("mouseup", ()=> moving=false);
 }
 
 // guardar
@@ -184,29 +172,24 @@ function guardar(){
 
   if(!titulo || !texto) return;
 
-  db.collection("canciones").add({
-    titulo: titulo,
-    texto: texto
-  });
+  db.collection("canciones").add({ titulo, texto });
 
   tituloInput.value="";
   editorTexto.innerHTML="";
 }
 
 // lista
-db.collection("canciones").onSnapshot(snapshot => {
-  cancionesDiv.innerHTML = "";
+db.collection("canciones").onSnapshot(snapshot=>{
+  cancionesDiv.innerHTML="";
 
-  snapshot.forEach(doc => {
+  snapshot.forEach(doc=>{
     let data = doc.data();
 
-    let div = document.createElement("div");
-    div.className = "cancion";
+    let div=document.createElement("div");
+    div.className="cancion";
 
-    div.innerHTML = `
-      <b>${data.titulo}</b>
-      <button onclick="ver('${doc.id}')">Abrir</button>
-    `;
+    div.innerHTML=`<b>${data.titulo}</b>
+    <button onclick="ver('${doc.id}')">Abrir</button>`;
 
     cancionesDiv.appendChild(div);
   });
@@ -214,18 +197,16 @@ db.collection("canciones").onSnapshot(snapshot => {
 
 // ver
 function ver(id){
-  db.collection("canciones").doc(id).get().then(doc => {
-    actualID = id;
-    actualData = doc.data();
-
-    visor.innerHTML = actualData.texto;
+  db.collection("canciones").doc(id).get().then(doc=>{
+    actualID=id;
+    actualData=doc.data();
+    visor.innerHTML=actualData.texto;
   });
 }
 
 // borrar
 function borrar(){
   if(!actualID) return;
-
   db.collection("canciones").doc(actualID).delete();
   visor.innerHTML="";
 }
@@ -235,18 +216,21 @@ function editar(){
   if(!actualID) return;
 
   tab("editor");
+  tituloInput.value=actualData.titulo;
+  editorTexto.innerHTML=actualData.texto;
 
-  tituloInput.value = actualData.titulo;
-  editorTexto.innerHTML = actualData.texto;
+  // reactivar movimiento
+  let imgs = editorTexto.querySelectorAll("img");
+  imgs.forEach(img=>hacerMovible(img));
 
   db.collection("canciones").doc(actualID).delete();
 }
 
 // refs
-let tituloInput = document.getElementById("titulo");
-let cancionesDiv = document.getElementById("canciones");
-let visor = document.getElementById("visor");
-let editorTexto = document.getElementById("editorTexto");
+let tituloInput=document.getElementById("titulo");
+let cancionesDiv=document.getElementById("canciones");
+let visor=document.getElementById("visor");
+let editorTexto=document.getElementById("editorTexto");
 </script>
 
 </body>
