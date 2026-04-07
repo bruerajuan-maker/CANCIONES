@@ -10,11 +10,13 @@
 <style>
 body { font-family: Arial; padding:10px; }
 
+/* barra */
 #barra {
   background:#ddd;
   padding:5px;
 }
 
+/* editor */
 #editor {
   border:1px solid #ccc;
   height:70vh;
@@ -23,6 +25,7 @@ body { font-family: Arial; padding:10px; }
   overflow:auto;
 }
 
+/* visor */
 #visor {
   border:1px solid #ccc;
   margin-top:10px;
@@ -35,6 +38,19 @@ button { margin:2px; }
   padding:5px;
   border-bottom:1px solid #ccc;
 }
+
+/* tabs */
+.tabBtn {
+  padding:8px;
+  border:1px solid #ccc;
+  cursor:pointer;
+  display:inline-block;
+}
+
+.tabActiva {
+  background:black;
+  color:white;
+}
 </style>
 </head>
 
@@ -42,29 +58,37 @@ button { margin:2px; }
 
 <h2>📝 Bloc PRO</h2>
 
+<!-- 🔥 SOLAPAS -->
+<div>
+  <span class="tabBtn tabActiva" onclick="cambiarTab('editorTab', this)">Editor</span>
+  <span class="tabBtn" onclick="cambiarTab('cancionesTab', this)">Canciones</span>
+</div>
+
+<!-- EDITOR -->
+<div id="editorTab">
+
 <div id="barra">
+  <button onclick="nuevo()">Nuevo</button>
+  <button onclick="guardar()">Guardar</button>
 
-<button onclick="nuevo()">Nuevo</button>
-<button onclick="guardar()">Guardar</button>
+  <br><br>
 
-<br><br>
+  <button onclick="cmd('bold')">B</button>
+  <button onclick="cmd('italic')">I</button>
+  <button onclick="cmd('underline')">U</button>
 
-<button onclick="cmd('bold')">B</button>
-<button onclick="cmd('italic')">I</button>
-<button onclick="cmd('underline')">U</button>
-
-<input type="color" onchange="color(this.value)">
-<input type="number" placeholder="Tamaño" onchange="size(this.value)">
-
+  <input type="color" onchange="color(this.value)">
+  <input type="number" placeholder="Tamaño" onchange="size(this.value)">
 </div>
 
 <input id="titulo" placeholder="Título"><br><br>
 
 <div id="editor" contenteditable="true"></div>
 
-<hr>
+</div>
 
-<h3>Cancionero</h3>
+<!-- CANCIONES -->
+<div id="cancionesTab" style="display:none;">
 
 <div id="canciones"></div>
 
@@ -73,6 +97,8 @@ button { margin:2px; }
 <br>
 <button onclick="editar()">Editar</button>
 <button onclick="borrar()">Borrar</button>
+
+</div>
 
 <script>
 // FIREBASE
@@ -88,10 +114,22 @@ const db = firebase.firestore();
 let actualID=null;
 let actualData=null;
 
-// comandos texto
-function cmd(c){
-  document.execCommand(c,false,null);
+// tabs
+function cambiarTab(id, btn){
+  editorTab.style.display="none";
+  cancionesTab.style.display="none";
+
+  editorTab.classList.remove("tabActiva");
+  cancionesTab.classList.remove("tabActiva");
+
+  document.querySelectorAll(".tabBtn").forEach(b=>b.classList.remove("tabActiva"));
+
+  document.getElementById(id).style.display="block";
+  btn.classList.add("tabActiva");
 }
+
+// texto
+function cmd(c){ document.execCommand(c,false,null); }
 
 function color(c){
   document.execCommand("foreColor", false, c);
@@ -169,6 +207,8 @@ function borrar(){
 // editar
 function editar(){
   if(!actualID) return;
+
+  cambiarTab('editorTab', document.querySelectorAll(".tabBtn")[0]);
 
   titulo.value=actualData.titulo;
   editor.innerHTML=actualData.texto;
