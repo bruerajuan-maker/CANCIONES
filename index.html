@@ -18,17 +18,8 @@ button { margin: 3px; }
   padding:10px;
   background:white;
   overflow:auto;
-  position: relative;
 }
 
-/* imágenes flotantes */
-img.libre {
-  position: absolute;
-  max-width: 150px;
-  cursor: move;
-}
-
-/* lista */
 .cancion {
   padding: 5px;
   border-bottom: 1px solid #ccc;
@@ -49,20 +40,16 @@ img.libre {
 <button onclick="tab('editor')">Editor</button>
 <button onclick="tab('lista')">Cancionero</button>
 
-<!-- EDITOR -->
 <div id="editor">
 
 <input id="titulo" placeholder="Título"><br><br>
 
-<!-- herramientas -->
 <button onclick="cmd('bold')">B</button>
 <button onclick="cmd('italic')">I</button>
 <button onclick="cmd('underline')">U</button>
 
 <input type="color" onchange="cmdColor(this.value)">
 <input type="number" placeholder="Tamaño" onchange="cmdSize(this.value)">
-
-<p>📷 Pegá imagen (CTRL+V) y movela</p>
 
 <div id="editorTexto" contenteditable="true"></div>
 
@@ -71,15 +58,12 @@ img.libre {
 
 </div>
 
-<!-- LISTA -->
 <div id="lista" style="display:none;">
   <div id="canciones"></div>
-
   <div id="visor"></div>
 
-  <br>
-  <button onclick="editar()">✏️ Editar</button>
-  <button onclick="borrar()">❌ Borrar</button>
+  <button onclick="editar()">Editar</button>
+  <button onclick="borrar()">Borrar</button>
 </div>
 
 <script>
@@ -95,7 +79,6 @@ const db = firebase.firestore();
 
 let actualID = null;
 let actualData = null;
-let moviendo = null;
 
 // pestañas
 function tab(t){
@@ -103,7 +86,7 @@ function tab(t){
   lista.style.display = t==="lista"?"block":"none";
 }
 
-// TEXTO
+// texto
 function cmd(c){ document.execCommand(c,false,null); }
 function cmdColor(color){ document.execCommand("foreColor", false, color); }
 
@@ -117,53 +100,6 @@ function cmdSize(size){
     }
   }
 }
-
-// 📷 pegar imagen SIN romper texto
-editorTexto.addEventListener("paste", e=>{
-  let items = e.clipboardData.items;
-
-  for(let item of items){
-    if(item.type.includes("image")){
-      e.preventDefault();
-
-      let file = item.getAsFile();
-      let reader = new FileReader();
-
-      reader.onload = ev=>{
-        let img = document.createElement("img");
-        img.src = ev.target.result;
-        img.className = "libre";
-
-        img.style.left = "50px";
-        img.style.top = "50px";
-
-        editorTexto.appendChild(img);
-      };
-
-      reader.readAsDataURL(file);
-    }
-  }
-});
-
-// mover imagen
-editorTexto.addEventListener("mousedown", e=>{
-  if(e.target.tagName==="IMG"){
-    moviendo = e.target;
-  }
-});
-
-document.addEventListener("mousemove", e=>{
-  if(!moviendo) return;
-
-  let rect = editorTexto.getBoundingClientRect();
-
-  moviendo.style.left = (e.clientX - rect.left - 50) + "px";
-  moviendo.style.top = (e.clientY - rect.top - 50) + "px";
-});
-
-document.addEventListener("mouseup", ()=>{
-  moviendo = null;
-});
 
 // guardar
 function guardar(){
@@ -212,7 +148,7 @@ function borrar(){
   visor.innerHTML="";
 }
 
-// editar (ARREGLADO)
+// editar
 function editar(){
   if(!actualID) return;
 
