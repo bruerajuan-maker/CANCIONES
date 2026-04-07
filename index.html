@@ -10,24 +10,37 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
+/* BOTONES */
 button { margin: 3px; }
 
+/* EDITOR GRANDE */
 #editorTexto {
   border:1px solid #ccc;
-  min-height:250px;
+  height: 70vh; /* 🔥 altura proporcional */
   padding:10px;
   background:white;
+  overflow:auto;
 }
 
+/* LISTA */
 .cancion {
   padding: 5px;
   border-bottom: 1px solid #ccc;
 }
 
+/* VISOR */
 #visor {
   border:1px solid #ccc;
   padding:10px;
   margin-top:10px;
+}
+
+/* IMAGENES */
+#editorTexto img {
+  max-width: 200px;
+  cursor: pointer;
+  display:block;
+  margin:10px 0;
 }
 </style>
 </head>
@@ -52,7 +65,17 @@ button { margin: 3px; }
 <input type="color" onchange="cmdColor(this.value)">
 <input type="number" placeholder="Tamaño" onchange="cmdSize(this.value)">
 
-<p>📷 Pegá imágenes con CTRL + V</p>
+<br><br>
+
+<!-- IMAGEN CONTROLES -->
+<button onclick="alinear('left')">⬅️ Izq</button>
+<button onclick="alinear('center')">⬜ Centro</button>
+<button onclick="alinear('right')">➡️ Der</button>
+
+<button onclick="frente()">⬆️ Frente</button>
+<button onclick="fondo()">⬇️ Fondo</button>
+
+<p>📷 Pegá imágenes con CTRL + V y luego HACÉ CLICK en la imagen</p>
 
 <div id="editorTexto" contenteditable="true"></div>
 
@@ -88,6 +111,7 @@ const db = firebase.firestore();
 
 let actualID = null;
 let actualData = null;
+let imgSeleccionada = null;
 
 // pestañas
 function tab(t){
@@ -95,7 +119,7 @@ function tab(t){
   lista.style.display = t==="lista"?"block":"none";
 }
 
-// comandos editor
+// comandos texto
 function cmd(c){
   document.execCommand(c,false,null);
 }
@@ -116,10 +140,47 @@ function cmdSize(size){
   }
 }
 
+// 🔥 seleccionar imagen
+document.addEventListener("click", function(e){
+  if(e.target.tagName==="IMG"){
+    imgSeleccionada = e.target;
+    alert("Imagen seleccionada");
+  }
+});
+
+// mover imagen
+function alinear(pos){
+  if(!imgSeleccionada) return;
+
+  imgSeleccionada.style.display = "block";
+  imgSeleccionada.style.margin = "10px auto";
+
+  if(pos==="left"){
+    imgSeleccionada.style.margin = "10px 0";
+  }
+  if(pos==="right"){
+    imgSeleccionada.style.margin = "10px 0 10px auto";
+  }
+}
+
+// traer adelante
+function frente(){
+  if(!imgSeleccionada) return;
+  imgSeleccionada.style.position = "relative";
+  imgSeleccionada.style.zIndex = 10;
+}
+
+// mandar atrás
+function fondo(){
+  if(!imgSeleccionada) return;
+  imgSeleccionada.style.position = "relative";
+  imgSeleccionada.style.zIndex = 0;
+}
+
 // guardar
 function guardar(){
   let titulo = tituloInput.value;
-  let texto = document.getElementById("editorTexto").innerHTML;
+  let texto = editorTexto.innerHTML;
 
   if(!titulo || !texto) return;
 
@@ -129,10 +190,10 @@ function guardar(){
   });
 
   tituloInput.value="";
-  document.getElementById("editorTexto").innerHTML="";
+  editorTexto.innerHTML="";
 }
 
-// mostrar lista
+// lista
 db.collection("canciones").onSnapshot(snapshot => {
   cancionesDiv.innerHTML = "";
 
@@ -176,7 +237,7 @@ function editar(){
   tab("editor");
 
   tituloInput.value = actualData.titulo;
-  document.getElementById("editorTexto").innerHTML = actualData.texto;
+  editorTexto.innerHTML = actualData.texto;
 
   db.collection("canciones").doc(actualID).delete();
 }
@@ -185,6 +246,7 @@ function editar(){
 let tituloInput = document.getElementById("titulo");
 let cancionesDiv = document.getElementById("canciones");
 let visor = document.getElementById("visor");
+let editorTexto = document.getElementById("editorTexto");
 </script>
 
 </body>
