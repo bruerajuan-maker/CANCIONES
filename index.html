@@ -10,9 +10,7 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
-button { margin: 3px; }
-
-/* EDITOR */
+/* editor */
 #editorTexto {
   border:1px solid #ccc;
   height: 70vh;
@@ -21,7 +19,7 @@ button { margin: 3px; }
   overflow:auto;
 }
 
-/* VISOR */
+/* visor */
 #visor {
   border:1px solid #ccc;
   padding:20px;
@@ -31,21 +29,30 @@ button { margin: 3px; }
   font-size:20px;
 }
 
-/* TABS (SOLAPAS REALES) */
-.tab {
-  display:inline-block;
-  padding:10px;
-  border:1px solid #ccc;
-  cursor:pointer;
-  margin-right:5px;
+/* fullscreen */
+.fullscreen {
+  position: fixed;
+  top:0;
+  left:0;
+  width:100%;
+  height:100%;
+  background:white;
+  z-index:9999;
+  padding:40px;
+  font-size:28px;
 }
 
-.tab.activa {
-  background:black;
+#salirFull {
+  position: fixed;
+  top:10px;
+  right:10px;
+  background:red;
   color:white;
+  padding:10px;
+  display:none;
+  z-index:10000;
 }
 
-/* lista */
 .cancion {
   padding: 5px;
   border-bottom: 1px solid #ccc;
@@ -65,12 +72,6 @@ button { margin: 3px; }
 
 <input id="titulo" placeholder="Título"><br><br>
 
-<select id="categoria"></select>
-<input id="nuevaCat" placeholder="Nueva categoría">
-<button onclick="crearCategoria()">+</button>
-
-<br><br>
-
 <button onclick="cmd('bold')">B</button>
 <button onclick="cmd('italic')">I</button>
 <button onclick="cmd('underline')">U</button>
@@ -88,13 +89,21 @@ button { margin: 3px; }
 <!-- LISTA -->
 <div id="lista" style="display:none;">
 
-<div id="tabs"></div> <!-- 🔥 SOLAPAS -->
-
 <div id="canciones"></div>
 
 <div id="visor"></div>
 
+<br>
+<button onclick="pantallaCompleta()">Pantalla completa</button>
+<button onclick="salirPantalla()">Salir</button>
+
+<br><br>
+<button onclick="editar()">Editar</button>
+<button onclick="borrar()">Borrar</button>
+
 </div>
+
+<button id="salirFull" onclick="salirPantalla()">SALIR</button>
 
 <script>
 // FIREBASE
@@ -107,10 +116,10 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let categoriaActual=null;
-let categorias=[];
+let actualID=null;
+let actualData=null;
 
-// pestañas
+// tabs
 function tab(t){
   editor.style.display = t==="editor"?"block":"none";
   lista.style.display = t==="lista"?"block":"none";
@@ -131,92 +140,77 @@ function cmdSize(size){
   }
 }
 
-// CREAR CATEGORIA
-function crearCategoria(){
-  let nombre = nuevaCat.value;
-  if(!nombre) return;
-
-  categorias.push(nombre);
-  nuevaCat.value="";
-  actualizarTabs();
-}
-
-// CREAR TABS VISUALES
-function actualizarTabs(){
-  tabs.innerHTML="";
-  categoria.innerHTML="";
-
-  categorias.forEach(cat=>{
-    // select
-    let op=document.createElement("option");
-    op.value=cat;
-    op.innerText=cat;
-    categoria.appendChild(op);
-
-    // TAB VISUAL
-    let t=document.createElement("div");
-    t.className="tab";
-    t.innerText=cat;
-
-    t.onclick=()=>{
-      categoriaActual=cat;
-      marcarTab(t);
-      cargar();
-    };
-
-    tabs.appendChild(t);
-  });
-}
-
-// marcar activa
-function marcarTab(tabClick){
-  let todos=document.querySelectorAll(".tab");
-  todos.forEach(t=>t.classList.remove("activa"));
-
-  tabClick.classList.add("activa");
-}
-
 // guardar
 function guardar(){
   let titulo=tituloInput.value;
   let texto=editorTexto.innerHTML;
-  let cat=categoria.value;
 
   if(!titulo||!texto) return;
 
-  db.collection("canciones").add({titulo,texto,cat});
+  db.collection("canciones").add({titulo,texto});
 
   tituloInput.value="";
   editorTexto.innerHTML="";
 }
 
-// cargar canciones FILTRADAS
-function cargar(){
-  db.collection("canciones").get().then(snapshot=>{
-    cancionesDiv.innerHTML="";
+// lista
+db.collection("canciones").onSnapshot(snapshot=>{
+  cancionesDiv.innerHTML="";
 
-    snapshot.forEach(doc=>{
-      let d=doc.data();
+  snapshot.forEach(doc=>{
+    let d=doc.data();
 
-      if(!categoriaActual) return;
-      if(d.cat !== categoriaActual) return;
+    let div=document.createElement("div");
+    div.className="cancion";
 
-      let div=document.createElement("div");
-      div.className="cancion";
+    div.innerHTML=`<b>${d.titulo}</b>
+    <button onclick="ver('${doc.id}')">Abrir</button>`;
 
-      div.innerHTML=`<b>${d.titulo}</b>
-      <button onclick="ver('${doc.id}')">Abrir</button>`;
-
-      cancionesDiv.appendChild(div);
-    });
+    cancionesDiv.appendChild(div);
   });
-}
+});
 
 // ver
 function ver(id){
   db.collection("canciones").doc(id).get().then(doc=>{
-    visor.innerHTML=doc.data().texto;
+    actualID=id;
+    actualData=doc.data();
+    visor.innerHTML=actualData.texto;
   });
+}
+
+// fullscreen
+function pantallaCompleta(){
+  visor.classList.add("fullscreen");
+  salirFull.style.display="block";
+}
+
+function salirPantalla(){
+  visor.classList.remove("fullscreen");
+  salirFull.style.display="none";
+}
+
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") salirPantalla();
+});
+
+// borrar
+function borrar(){
+  if(!actualID) return;
+  db.collection("canciones").doc(actualID).delete();
+  visor.innerHTML="";
+}
+
+// editar
+function editar(){
+  if(!actualID) return;
+
+  tab("editor");
+
+  tituloInput.value=actualData.titulo;
+  editorTexto.innerHTML=actualData.texto;
+
+  db.collection("canciones").doc(actualID).delete();
 }
 
 // refs
@@ -224,9 +218,6 @@ let tituloInput=document.getElementById("titulo");
 let cancionesDiv=document.getElementById("canciones");
 let visor=document.getElementById("visor");
 let editorTexto=document.getElementById("editorTexto");
-let categoria=document.getElementById("categoria");
-let nuevaCat=document.getElementById("nuevaCat");
-let tabs=document.getElementById("tabs");
 </script>
 
 </body>
