@@ -10,13 +10,8 @@
 <style>
 body { font-family: Arial; padding:10px; }
 
-/* barra */
-#barra {
-  background:#ddd;
-  padding:5px;
-}
+#barra { background:#ddd; padding:5px; }
 
-/* editor */
 #editor {
   border:1px solid #ccc;
   height:70vh;
@@ -25,7 +20,6 @@ body { font-family: Arial; padding:10px; }
   overflow:auto;
 }
 
-/* visor */
 #visor {
   border:1px solid #ccc;
   margin-top:10px;
@@ -39,7 +33,6 @@ button { margin:2px; }
   border-bottom:1px solid #ccc;
 }
 
-/* tabs */
 .tabBtn {
   padding:8px;
   border:1px solid #ccc;
@@ -58,10 +51,11 @@ button { margin:2px; }
 
 <h2>📝 Bloc PRO</h2>
 
-<!-- 🔥 SOLAPAS -->
+<!-- SOLAPAS -->
 <div>
   <span class="tabBtn tabActiva" onclick="cambiarTab('editorTab', this)">Editor</span>
-  <span class="tabBtn" onclick="cambiarTab('cancionesTab', this)">Canciones</span>
+  <span class="tabBtn" onclick="mostrarLista('Canciones', this)">Canciones</span>
+  <span class="tabBtn" onclick="mostrarLista('Bajo', this)">Bajo</span>
 </div>
 
 <!-- EDITOR -->
@@ -87,8 +81,8 @@ button { margin:2px; }
 
 </div>
 
-<!-- CANCIONES -->
-<div id="cancionesTab" style="display:none;">
+<!-- LISTA -->
+<div id="listaTab" style="display:none;">
 
 <div id="canciones"></div>
 
@@ -113,19 +107,25 @@ const db = firebase.firestore();
 
 let actualID=null;
 let actualData=null;
+let carpetaActual=null;
 
 // tabs
 function cambiarTab(id, btn){
   editorTab.style.display="none";
-  cancionesTab.style.display="none";
-
-  editorTab.classList.remove("tabActiva");
-  cancionesTab.classList.remove("tabActiva");
+  listaTab.style.display="none";
 
   document.querySelectorAll(".tabBtn").forEach(b=>b.classList.remove("tabActiva"));
 
   document.getElementById(id).style.display="block";
   btn.classList.add("tabActiva");
+}
+
+// mostrar lista por carpeta
+function mostrarLista(tipo, btn){
+  carpetaActual = tipo;
+
+  cambiarTab('listaTab', btn);
+  cargar();
 }
 
 // texto
@@ -154,38 +154,47 @@ function nuevo(){
   }
 }
 
-// guardar
+// 🔥 GUARDAR CON PREGUNTA
 function guardar(){
   let t=titulo.value;
   let texto=editor.innerHTML;
 
   if(!t||!texto) return;
 
+  let carpeta = prompt("¿Dónde guardar? (Canciones / Bajo)", "Canciones");
+
+  if(!carpeta) return;
+
   db.collection("canciones").add({
     titulo:t,
-    texto:texto
+    texto:texto,
+    carpeta:carpeta
   });
 
   editor.innerHTML="";
   titulo.value="";
 }
 
-// lista
-db.collection("canciones").onSnapshot(snapshot=>{
-  canciones.innerHTML="";
+// cargar filtrado
+function cargar(){
+  db.collection("canciones").get().then(snapshot=>{
+    canciones.innerHTML="";
 
-  snapshot.forEach(doc=>{
-    let d=doc.data();
+    snapshot.forEach(doc=>{
+      let d=doc.data();
 
-    let div=document.createElement("div");
-    div.className="cancion";
+      if(carpetaActual && d.carpeta !== carpetaActual) return;
 
-    div.innerHTML=`<b>${d.titulo}</b>
-    <button onclick="ver('${doc.id}')">Abrir</button>`;
+      let div=document.createElement("div");
+      div.className="cancion";
 
-    canciones.appendChild(div);
+      div.innerHTML=`<b>${d.titulo}</b>
+      <button onclick="ver('${doc.id}')">Abrir</button>`;
+
+      canciones.appendChild(div);
+    });
   });
-});
+}
 
 // ver
 function ver(id){
