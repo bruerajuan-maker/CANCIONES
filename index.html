@@ -55,6 +55,19 @@ body { font-family: Arial; padding: 10px; }
   border-bottom: 1px solid #ccc;
 }
 
+.carpeta {
+  padding:8px;
+  border:1px solid #ccc;
+  display:inline-block;
+  margin:5px;
+  cursor:pointer;
+}
+
+.carpeta.activa {
+  background:black;
+  color:white;
+}
+
 button { margin: 3px; }
 </style>
 </head>
@@ -70,6 +83,15 @@ button { margin: 3px; }
 <div id="editor">
 
 <input id="titulo" placeholder="Título"><br><br>
+
+<!-- 🔥 NUEVO: instrumento -->
+<select id="instrumento">
+  <option value="Guitarra">Guitarra</option>
+  <option value="Bajo">Bajo</option>
+  <option value="Armónica">Armónica</option>
+</select>
+
+<br><br>
 
 <button onclick="cmd('bold')">B</button>
 <button onclick="cmd('italic')">I</button>
@@ -87,6 +109,9 @@ button { margin: 3px; }
 
 <!-- LISTA -->
 <div id="lista" style="display:none;">
+
+<!-- 🔥 CARPETAS -->
+<div id="carpetas"></div>
 
 <div id="canciones"></div>
 
@@ -117,6 +142,7 @@ const db = firebase.firestore();
 
 let actualID=null;
 let actualData=null;
+let filtroInstrumento=null;
 
 // pestañas
 function tab(t){
@@ -139,35 +165,67 @@ function cmdSize(size){
   }
 }
 
-// guardar
+// guardar (ahora con instrumento)
 function guardar(){
   let titulo=tituloInput.value;
   let texto=editorTexto.innerHTML;
+  let instrumento=instrumentoSelect.value;
 
   if(!titulo||!texto) return;
 
-  db.collection("canciones").add({titulo,texto});
+  db.collection("canciones").add({titulo,texto,instrumento});
 
   tituloInput.value="";
   editorTexto.innerHTML="";
 }
 
-// lista
-db.collection("canciones").onSnapshot(snapshot=>{
-  cancionesDiv.innerHTML="";
+// crear carpetas visuales
+function crearCarpetas(){
+  let lista = ["Guitarra","Bajo","Armónica"];
 
-  snapshot.forEach(doc=>{
-    let d=doc.data();
+  carpetasDiv.innerHTML="";
 
+  lista.forEach(inst=>{
     let div=document.createElement("div");
-    div.className="cancion";
+    div.className="carpeta";
+    div.innerText=inst;
 
-    div.innerHTML=`<b>${d.titulo}</b>
-    <button onclick="ver('${doc.id}')">Abrir</button>`;
+    div.onclick=()=>{
+      filtroInstrumento=inst;
+      marcarCarpeta(div);
+      cargar();
+    };
 
-    cancionesDiv.appendChild(div);
+    carpetasDiv.appendChild(div);
   });
-});
+}
+
+// marcar activa
+function marcarCarpeta(c){
+  document.querySelectorAll(".carpeta").forEach(x=>x.classList.remove("activa"));
+  c.classList.add("activa");
+}
+
+// lista (FILTRADA)
+function cargar(){
+  db.collection("canciones").onSnapshot(snapshot=>{
+    cancionesDiv.innerHTML="";
+
+    snapshot.forEach(doc=>{
+      let d=doc.data();
+
+      if(filtroInstrumento && d.instrumento !== filtroInstrumento) return;
+
+      let div=document.createElement("div");
+      div.className="cancion";
+
+      div.innerHTML=`<b>${d.titulo}</b>
+      <button onclick="ver('${doc.id}')">Abrir</button>`;
+
+      cancionesDiv.appendChild(div);
+    });
+  });
+}
 
 // ver
 function ver(id){
@@ -212,11 +270,17 @@ function editar(){
   db.collection("canciones").doc(actualID).delete();
 }
 
+// iniciar
+crearCarpetas();
+cargar();
+
 // refs
 let tituloInput=document.getElementById("titulo");
 let cancionesDiv=document.getElementById("canciones");
 let visor=document.getElementById("visor");
 let editorTexto=document.getElementById("editorTexto");
+let instrumentoSelect=document.getElementById("instrumento");
+let carpetasDiv=document.getElementById("carpetas");
 </script>
 
 </body>
