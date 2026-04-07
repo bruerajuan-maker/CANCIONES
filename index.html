@@ -2,32 +2,34 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Cancionero Bloc</title>
+<title>Bloc PRO</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
-body { font-family: monospace; padding:10px; }
+body { font-family: Arial; padding:10px; }
 
 #barra {
   background:#ddd;
   padding:5px;
-  margin-bottom:10px;
 }
 
 #editor {
-  width:100%;
+  border:1px solid #ccc;
   height:70vh;
-  font-size:16px;
+  padding:10px;
+  margin-top:5px;
+  overflow:auto;
 }
 
 #visor {
   border:1px solid #ccc;
-  padding:10px;
   margin-top:10px;
-  white-space: pre-wrap;
+  padding:10px;
 }
+
+button { margin:2px; }
 
 .cancion {
   padding:5px;
@@ -38,16 +40,27 @@ body { font-family: monospace; padding:10px; }
 
 <body>
 
-<h2>📝 Bloc + Cancionero</h2>
+<h2>📝 Bloc PRO</h2>
 
 <div id="barra">
-  <button onclick="nuevo()">Nuevo</button>
-  <button onclick="guardar()">Guardar</button>
+
+<button onclick="nuevo()">Nuevo</button>
+<button onclick="guardar()">Guardar</button>
+
+<br><br>
+
+<button onclick="cmd('bold')">B</button>
+<button onclick="cmd('italic')">I</button>
+<button onclick="cmd('underline')">U</button>
+
+<input type="color" onchange="color(this.value)">
+<input type="number" placeholder="Tamaño" onchange="size(this.value)">
+
 </div>
 
 <input id="titulo" placeholder="Título"><br><br>
 
-<textarea id="editor"></textarea>
+<div id="editor" contenteditable="true"></div>
 
 <hr>
 
@@ -62,7 +75,7 @@ body { font-family: monospace; padding:10px; }
 <button onclick="borrar()">Borrar</button>
 
 <script>
-// FIREBASE (NO SE TOCA)
+// FIREBASE
 const firebaseConfig = {
   apiKey: "AIzaSyBluLvO5UfzfMcadDfKtr30U3jhxsfBJKQ",
   authDomain: "cancionero-f0c5b.firebaseapp.com",
@@ -75,27 +88,47 @@ const db = firebase.firestore();
 let actualID=null;
 let actualData=null;
 
+// comandos texto
+function cmd(c){
+  document.execCommand(c,false,null);
+}
+
+function color(c){
+  document.execCommand("foreColor", false, c);
+}
+
+function size(s){
+  document.execCommand("fontSize", false, "7");
+  let f=document.getElementsByTagName("font");
+  for(let x of f){
+    if(x.size=="7"){
+      x.removeAttribute("size");
+      x.style.fontSize=s+"px";
+    }
+  }
+}
+
 // nuevo
 function nuevo(){
   if(confirm("¿Borrar todo?")){
-    editor.value="";
+    editor.innerHTML="";
     titulo.value="";
   }
 }
 
 // guardar
 function guardar(){
-  let t = titulo.value;
-  let texto = editor.value;
+  let t=titulo.value;
+  let texto=editor.innerHTML;
 
-  if(!t || !texto) return;
+  if(!t||!texto) return;
 
   db.collection("canciones").add({
-    titulo: t,
-    texto: texto
+    titulo:t,
+    texto:texto
   });
 
-  editor.value="";
+  editor.innerHTML="";
   titulo.value="";
 }
 
@@ -122,7 +155,7 @@ function ver(id){
     actualID=id;
     actualData=doc.data();
 
-    visor.innerText = actualData.texto;
+    visor.innerHTML=actualData.texto;
   });
 }
 
@@ -130,15 +163,15 @@ function ver(id){
 function borrar(){
   if(!actualID) return;
   db.collection("canciones").doc(actualID).delete();
-  visor.innerText="";
+  visor.innerHTML="";
 }
 
 // editar
 function editar(){
   if(!actualID) return;
 
-  titulo.value = actualData.titulo;
-  editor.value = actualData.texto;
+  titulo.value=actualData.titulo;
+  editor.innerHTML=actualData.texto;
 
   db.collection("canciones").doc(actualID).delete();
 }
