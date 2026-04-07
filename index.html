@@ -2,133 +2,67 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Cancionero</title>
+<title>Cancionero Bloc</title>
 
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
 
 <style>
-body { font-family: Arial; padding: 10px; }
+body { font-family: monospace; padding:10px; }
 
-#editorTexto {
-  border:1px solid #ccc;
-  height: 70vh;
-  padding:10px;
-  background:white;
-  overflow:auto;
+#barra {
+  background:#ddd;
+  padding:5px;
+  margin-bottom:10px;
+}
+
+#editor {
+  width:100%;
+  height:70vh;
+  font-size:16px;
 }
 
 #visor {
   border:1px solid #ccc;
-  padding:20px;
-  margin-top:10px;
-  height: 70vh;
-  overflow:auto;
-  font-size:20px;
-}
-
-.fullscreen {
-  position: fixed;
-  top:0;
-  left:0;
-  width:100%;
-  height:100%;
-  background:white;
-  z-index:9999;
-  padding:40px;
-  font-size:28px;
-}
-
-#salirFull {
-  position: fixed;
-  top:10px;
-  right:10px;
-  background:red;
-  color:white;
   padding:10px;
-  display:none;
-  z-index:10000;
+  margin-top:10px;
+  white-space: pre-wrap;
 }
 
 .cancion {
-  padding: 5px;
-  border-bottom: 1px solid #ccc;
+  padding:5px;
+  border-bottom:1px solid #ccc;
 }
-
-.carpeta {
-  padding:8px;
-  border:1px solid #ccc;
-  display:inline-block;
-  margin:5px;
-  cursor:pointer;
-}
-
-.carpeta.activa {
-  background:black;
-  color:white;
-}
-
-button { margin: 3px; }
 </style>
 </head>
 
 <body>
 
-<h2>🎸 Cancionero</h2>
+<h2>📝 Bloc + Cancionero</h2>
 
-<button onclick="tab('editor')">Editor</button>
-<button onclick="tab('lista')">Cancionero</button>
-
-<!-- EDITOR -->
-<div id="editor">
+<div id="barra">
+  <button onclick="nuevo()">Nuevo</button>
+  <button onclick="guardar()">Guardar</button>
+</div>
 
 <input id="titulo" placeholder="Título"><br><br>
 
-<select id="instrumento">
-  <option value="Guitarra">Guitarra</option>
-  <option value="Bajo">Bajo</option>
-  <option value="Armónica">Armónica</option>
-</select>
+<textarea id="editor"></textarea>
 
-<br><br>
+<hr>
 
-<button onclick="cmd('bold')">B</button>
-<button onclick="cmd('italic')">I</button>
-<button onclick="cmd('underline')">U</button>
-
-<input type="color" onchange="cmdColor(this.value)">
-<input type="number" placeholder="Tamaño" onchange="cmdSize(this.value)">
-
-<div id="editorTexto" contenteditable="true"></div>
-
-<br>
-<button onclick="guardar()">Guardar</button>
-
-</div>
-
-<!-- LISTA -->
-<div id="lista" style="display:none;">
-
-<div id="carpetas"></div>
+<h3>Cancionero</h3>
 
 <div id="canciones"></div>
 
 <div id="visor"></div>
 
 <br>
-<button onclick="pantallaCompleta()">Pantalla completa</button>
-<button onclick="salirPantalla()">Salir</button>
-
-<br><br>
 <button onclick="editar()">Editar</button>
 <button onclick="borrar()">Borrar</button>
 
-</div>
-
-<button id="salirFull" onclick="salirPantalla()">SALIR</button>
-
 <script>
-// FIREBASE
+// FIREBASE (NO SE TOCA)
 const firebaseConfig = {
   apiKey: "AIzaSyBluLvO5UfzfMcadDfKtr30U3jhxsfBJKQ",
   authDomain: "cancionero-f0c5b.firebaseapp.com",
@@ -140,148 +74,74 @@ const db = firebase.firestore();
 
 let actualID=null;
 let actualData=null;
-let filtroInstrumento=null;
 
-// tabs
-function tab(t){
-  editor.style.display = t==="editor"?"block":"none";
-  lista.style.display = t==="lista"?"block":"none";
-}
-
-// texto
-function cmd(c){ document.execCommand(c,false,null); }
-function cmdColor(color){ document.execCommand("foreColor", false, color); }
-
-function cmdSize(size){
-  document.execCommand("fontSize", false, "7");
-  let fonts=document.getElementsByTagName("font");
-  for(let f of fonts){
-    if(f.size=="7"){
-      f.removeAttribute("size");
-      f.style.fontSize=size+"px";
-    }
+// nuevo
+function nuevo(){
+  if(confirm("¿Borrar todo?")){
+    editor.value="";
+    titulo.value="";
   }
 }
 
-// guardar (FUNCIONA)
+// guardar
 function guardar(){
-  let titulo=tituloInput.value;
-  let texto=editorTexto.innerHTML;
-  let instrumento=instrumentoSelect.value;
+  let t = titulo.value;
+  let texto = editor.value;
 
-  if(!titulo||!texto) return;
+  if(!t || !texto) return;
 
   db.collection("canciones").add({
-    titulo: titulo,
-    texto: texto,
-    instrumento: instrumento
+    titulo: t,
+    texto: texto
   });
 
-  tituloInput.value="";
-  editorTexto.innerHTML="";
+  editor.value="";
+  titulo.value="";
 }
 
-// carpetas
-function crearCarpetas(){
-  let lista = ["Guitarra","Bajo","Armónica"];
+// lista
+db.collection("canciones").onSnapshot(snapshot=>{
+  canciones.innerHTML="";
 
-  carpetasDiv.innerHTML="";
+  snapshot.forEach(doc=>{
+    let d=doc.data();
 
-  lista.forEach(inst=>{
     let div=document.createElement("div");
-    div.className="carpeta";
-    div.innerText=inst;
+    div.className="cancion";
 
-    div.onclick=()=>{
-      filtroInstrumento=inst;
-      marcarCarpeta(div);
-      cargar();
-    };
+    div.innerHTML=`<b>${d.titulo}</b>
+    <button onclick="ver('${doc.id}')">Abrir</button>`;
 
-    carpetasDiv.appendChild(div);
+    canciones.appendChild(div);
   });
-}
-
-function marcarCarpeta(c){
-  document.querySelectorAll(".carpeta").forEach(x=>x.classList.remove("activa"));
-  c.classList.add("activa");
-}
-
-// 🔥 ARREGLADO (NO ROMPE NADA)
-function cargar(){
-  db.collection("canciones").get().then(snapshot=>{
-    cancionesDiv.innerHTML="";
-
-    snapshot.forEach(doc=>{
-      let d=doc.data();
-
-      if(filtroInstrumento && d.instrumento !== filtroInstrumento) return;
-
-      let div=document.createElement("div");
-      div.className="cancion";
-
-      div.innerHTML=`<b>${d.titulo}</b>
-      <button onclick="ver('${doc.id}')">Abrir</button>`;
-
-      cancionesDiv.appendChild(div);
-    });
-  });
-}
+});
 
 // ver
 function ver(id){
   db.collection("canciones").doc(id).get().then(doc=>{
     actualID=id;
     actualData=doc.data();
-    visor.innerHTML=actualData.texto;
+
+    visor.innerText = actualData.texto;
   });
 }
-
-// fullscreen
-function pantallaCompleta(){
-  visor.classList.add("fullscreen");
-  salirFull.style.display="block";
-}
-
-function salirPantalla(){
-  visor.classList.remove("fullscreen");
-  salirFull.style.display="none";
-}
-
-document.addEventListener("keydown", e=>{
-  if(e.key==="Escape") salirPantalla();
-});
 
 // borrar
 function borrar(){
   if(!actualID) return;
   db.collection("canciones").doc(actualID).delete();
-  visor.innerHTML="";
+  visor.innerText="";
 }
 
 // editar
 function editar(){
   if(!actualID) return;
 
-  tab("editor");
-
-  tituloInput.value=actualData.titulo;
-  editorTexto.innerHTML=actualData.texto;
+  titulo.value = actualData.titulo;
+  editor.value = actualData.texto;
 
   db.collection("canciones").doc(actualID).delete();
 }
-
-// iniciar
-crearCarpetas();
-cargar();
-
-// refs
-let tituloInput=document.getElementById("titulo");
-let cancionesDiv=document.getElementById("canciones");
-let visor=document.getElementById("visor");
-let editorTexto=document.getElementById("editorTexto");
-let instrumentoSelect=document.getElementById("instrumento");
-let carpetasDiv=document.getElementById("carpetas");
 </script>
 
 </body>
