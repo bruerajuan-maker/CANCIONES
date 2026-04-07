@@ -84,7 +84,6 @@ button { margin: 3px; }
 
 <input id="titulo" placeholder="Título"><br><br>
 
-<!-- 🔥 NUEVO: instrumento -->
 <select id="instrumento">
   <option value="Guitarra">Guitarra</option>
   <option value="Bajo">Bajo</option>
@@ -110,7 +109,6 @@ button { margin: 3px; }
 <!-- LISTA -->
 <div id="lista" style="display:none;">
 
-<!-- 🔥 CARPETAS -->
 <div id="carpetas"></div>
 
 <div id="canciones"></div>
@@ -144,7 +142,7 @@ let actualID=null;
 let actualData=null;
 let filtroInstrumento=null;
 
-// pestañas
+// tabs
 function tab(t){
   editor.style.display = t==="editor"?"block":"none";
   lista.style.display = t==="lista"?"block":"none";
@@ -165,7 +163,7 @@ function cmdSize(size){
   }
 }
 
-// guardar (ahora con instrumento)
+// guardar (FUNCIONA)
 function guardar(){
   let titulo=tituloInput.value;
   let texto=editorTexto.innerHTML;
@@ -173,13 +171,17 @@ function guardar(){
 
   if(!titulo||!texto) return;
 
-  db.collection("canciones").add({titulo,texto,instrumento});
+  db.collection("canciones").add({
+    titulo: titulo,
+    texto: texto,
+    instrumento: instrumento
+  });
 
   tituloInput.value="";
   editorTexto.innerHTML="";
 }
 
-// crear carpetas visuales
+// carpetas
 function crearCarpetas(){
   let lista = ["Guitarra","Bajo","Armónica"];
 
@@ -200,15 +202,14 @@ function crearCarpetas(){
   });
 }
 
-// marcar activa
 function marcarCarpeta(c){
   document.querySelectorAll(".carpeta").forEach(x=>x.classList.remove("activa"));
   c.classList.add("activa");
 }
 
-// lista (FILTRADA)
+// 🔥 ARREGLADO (NO ROMPE NADA)
 function cargar(){
-  db.collection("canciones").onSnapshot(snapshot=>{
+  db.collection("canciones").get().then(snapshot=>{
     cancionesDiv.innerHTML="";
 
     snapshot.forEach(doc=>{
