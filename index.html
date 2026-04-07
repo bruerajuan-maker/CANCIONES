@@ -12,7 +12,6 @@ body { font-family: Arial; padding: 10px; }
 
 button { margin: 3px; }
 
-/* EDITOR */
 #editorTexto {
   border:1px solid #ccc;
   height: 70vh;
@@ -21,7 +20,6 @@ button { margin: 3px; }
   overflow:auto;
 }
 
-/* VISOR */
 #visor {
   border:1px solid #ccc;
   padding:20px;
@@ -31,7 +29,6 @@ button { margin: 3px; }
   font-size:20px;
 }
 
-/* FULLSCREEN */
 .fullscreen {
   position: fixed;
   top:0;
@@ -44,7 +41,6 @@ button { margin: 3px; }
   font-size:28px;
 }
 
-/* botón salir */
 #salirFull {
   position: fixed;
   top:10px;
@@ -56,13 +52,11 @@ button { margin: 3px; }
   z-index:10000;
 }
 
-/* lista */
 .cancion {
   padding: 5px;
   border-bottom: 1px solid #ccc;
 }
 
-/* categorias */
 .categoria {
   margin:5px;
   padding:5px;
@@ -80,12 +74,10 @@ button { margin: 3px; }
 <button onclick="tab('editor')">Editor</button>
 <button onclick="tab('lista')">Cancionero</button>
 
-<!-- EDITOR -->
 <div id="editor">
 
 <input id="titulo" placeholder="Título"><br><br>
 
-<!-- CATEGORIA -->
 <select id="categoria"></select>
 <input id="nuevaCat" placeholder="Nueva categoría">
 <button onclick="crearCategoria()">+</button>
@@ -106,7 +98,6 @@ button { margin: 3px; }
 
 </div>
 
-<!-- LISTA -->
 <div id="lista" style="display:none;">
 
 <div id="filtros"></div>
@@ -139,6 +130,7 @@ const db = firebase.firestore();
 let actualID=null;
 let actualData=null;
 let categoriaActual=null;
+let categorias=[];
 
 // pestañas
 function tab(t){
@@ -162,8 +154,6 @@ function cmdSize(size){
 }
 
 // categorias
-let categorias=[];
-
 function crearCategoria(){
   let nombre = nuevaCat.value;
   if(!nombre) return;
@@ -186,9 +176,16 @@ function actualizarCategorias(){
     let f=document.createElement("div");
     f.className="categoria";
     f.innerText=cat;
-    f.onclick=()=>{categoriaActual=cat; cargar();};
+    f.onclick=()=>{
+      categoriaActual=cat;
+      cargar();
+    };
     filtros.appendChild(f);
   });
+
+  // 🔥 mostrar todas por defecto
+  categoriaActual=null;
+  cargar();
 }
 
 // guardar
@@ -205,15 +202,15 @@ function guardar(){
   editorTexto.innerHTML="";
 }
 
-// lista
+// cargar canciones (ARREGLADO)
 function cargar(){
-  db.collection("canciones").onSnapshot(snapshot=>{
+  db.collection("canciones").get().then(snapshot=>{
     cancionesDiv.innerHTML="";
 
     snapshot.forEach(doc=>{
       let d=doc.data();
 
-      if(categoriaActual && d.cat!==categoriaActual) return;
+      if(categoriaActual && d.cat !== categoriaActual) return;
 
       let div=document.createElement("div");
       div.className="cancion";
@@ -225,6 +222,7 @@ function cargar(){
     });
   });
 }
+
 cargar();
 
 // ver
@@ -247,7 +245,6 @@ function salirPantalla(){
   salirFull.style.display="none";
 }
 
-// ESC salir
 document.addEventListener("keydown", e=>{
   if(e.key==="Escape") salirPantalla();
 });
@@ -257,6 +254,7 @@ function borrar(){
   if(!actualID) return;
   db.collection("canciones").doc(actualID).delete();
   visor.innerHTML="";
+  cargar();
 }
 
 // editar
@@ -269,6 +267,7 @@ function editar(){
   editorTexto.innerHTML=actualData.texto;
 
   db.collection("canciones").doc(actualID).delete();
+  cargar();
 }
 
 // refs
