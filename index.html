@@ -10,52 +10,76 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
+button { margin: 3px; }
+
 #editorTexto {
   border:1px solid #ccc;
   height: 70vh;
   padding:10px;
   background:white;
-  position: relative;
   overflow:auto;
+  position: relative;
 }
 
+/* imágenes flotantes */
 img.libre {
   position: absolute;
   max-width: 150px;
   cursor: move;
 }
 
+/* lista */
 .cancion {
   padding: 5px;
   border-bottom: 1px solid #ccc;
+}
+
+#visor {
+  border:1px solid #ccc;
+  padding:10px;
+  margin-top:10px;
 }
 </style>
 </head>
 
 <body>
 
-<h2>🎸 Cancionero</h2>
+<h2>🎸 Cancionero PRO</h2>
 
 <button onclick="tab('editor')">Editor</button>
 <button onclick="tab('lista')">Cancionero</button>
 
+<!-- EDITOR -->
 <div id="editor">
-  <input id="titulo" placeholder="Título"><br><br>
 
-  <p>📷 Pegá imagen (CTRL+V) y arrastrala</p>
+<input id="titulo" placeholder="Título"><br><br>
 
-  <div id="editorTexto" contenteditable="true"></div>
+<!-- herramientas -->
+<button onclick="cmd('bold')">B</button>
+<button onclick="cmd('italic')">I</button>
+<button onclick="cmd('underline')">U</button>
 
-  <br>
-  <button onclick="guardar()">Guardar</button>
+<input type="color" onchange="cmdColor(this.value)">
+<input type="number" placeholder="Tamaño" onchange="cmdSize(this.value)">
+
+<p>📷 Pegá imagen (CTRL+V) y movela</p>
+
+<div id="editorTexto" contenteditable="true"></div>
+
+<br>
+<button onclick="guardar()">Guardar</button>
+
 </div>
 
+<!-- LISTA -->
 <div id="lista" style="display:none;">
   <div id="canciones"></div>
+
   <div id="visor"></div>
 
-  <button onclick="editar()">Editar</button>
-  <button onclick="borrar()">Borrar</button>
+  <br>
+  <button onclick="editar()">✏️ Editar</button>
+  <button onclick="borrar()">❌ Borrar</button>
 </div>
 
 <script>
@@ -63,13 +87,14 @@ img.libre {
 const firebaseConfig = {
   apiKey: "AIzaSyBluLvO5UfzfMcadDfKtr30U3jhxsfBJKQ",
   authDomain: "cancionero-f0c5b.firebaseapp.com",
-  projectId: "cancionero-f0c5b",
+  projectId: "cancionero-f0c5b"
 };
 
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 let actualID = null;
+let actualData = null;
 let moviendo = null;
 
 // pestañas
@@ -78,14 +103,29 @@ function tab(t){
   lista.style.display = t==="lista"?"block":"none";
 }
 
-// pegar imagen SIN duplicar
-editorTexto.addEventListener("paste", e=>{
-  e.preventDefault();
+// TEXTO
+function cmd(c){ document.execCommand(c,false,null); }
+function cmdColor(color){ document.execCommand("foreColor", false, color); }
 
+function cmdSize(size){
+  document.execCommand("fontSize", false, "7");
+  let fonts = document.getElementsByTagName("font");
+  for(let f of fonts){
+    if(f.size=="7"){
+      f.removeAttribute("size");
+      f.style.fontSize = size+"px";
+    }
+  }
+}
+
+// 📷 pegar imagen SIN romper texto
+editorTexto.addEventListener("paste", e=>{
   let items = e.clipboardData.items;
 
   for(let item of items){
     if(item.type.includes("image")){
+      e.preventDefault();
+
       let file = item.getAsFile();
       let reader = new FileReader();
 
@@ -105,7 +145,7 @@ editorTexto.addEventListener("paste", e=>{
   }
 });
 
-// mover imagen (SIMPLE Y FUNCIONA)
+// mover imagen
 editorTexto.addEventListener("mousedown", e=>{
   if(e.target.tagName==="IMG"){
     moviendo = e.target;
@@ -127,31 +167,31 @@ document.addEventListener("mouseup", ()=>{
 
 // guardar
 function guardar(){
-  let titulo = document.getElementById("titulo").value;
+  let titulo = tituloInput.value;
   let texto = editorTexto.innerHTML;
 
   if(!titulo || !texto) return;
 
   db.collection("canciones").add({ titulo, texto });
 
-  titulo.value="";
+  tituloInput.value="";
   editorTexto.innerHTML="";
 }
 
 // lista
 db.collection("canciones").onSnapshot(snapshot=>{
-  canciones.innerHTML="";
+  cancionesDiv.innerHTML="";
 
   snapshot.forEach(doc=>{
-    let d = doc.data();
+    let data = doc.data();
 
     let div=document.createElement("div");
     div.className="cancion";
 
-    div.innerHTML=`${d.titulo}
+    div.innerHTML=`<b>${data.titulo}</b>
     <button onclick="ver('${doc.id}')">Abrir</button>`;
 
-    canciones.appendChild(div);
+    cancionesDiv.appendChild(div);
   });
 });
 
@@ -159,32 +199,36 @@ db.collection("canciones").onSnapshot(snapshot=>{
 function ver(id){
   db.collection("canciones").doc(id).get().then(doc=>{
     actualID=id;
-    visor.innerHTML=doc.data().texto;
+    actualData=doc.data();
+    visor.innerHTML=actualData.texto;
   });
 }
 
 // borrar
 function borrar(){
   if(!actualID) return;
+
   db.collection("canciones").doc(actualID).delete();
   visor.innerHTML="";
 }
 
-// editar
+// editar (ARREGLADO)
 function editar(){
   if(!actualID) return;
 
   tab("editor");
 
-  db.collection("canciones").doc(actualID).get().then(doc=>{
-    let d = doc.data();
-
-    titulo.value=d.titulo;
-    editorTexto.innerHTML=d.texto;
-  });
+  tituloInput.value = actualData.titulo;
+  editorTexto.innerHTML = actualData.texto;
 
   db.collection("canciones").doc(actualID).delete();
 }
+
+// refs
+let tituloInput=document.getElementById("titulo");
+let cancionesDiv=document.getElementById("canciones");
+let visor=document.getElementById("visor");
+let editorTexto=document.getElementById("editorTexto");
 </script>
 
 </body>
