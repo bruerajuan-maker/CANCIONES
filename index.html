@@ -10,6 +10,8 @@
 <style>
 body { font-family: Arial; padding: 10px; }
 
+button { margin: 3px; }
+
 /* EDITOR */
 #editorTexto {
   border:1px solid #ccc;
@@ -19,23 +21,17 @@ body { font-family: Arial; padding: 10px; }
   overflow:auto;
 }
 
-/* LISTA */
-.cancion {
-  padding: 5px;
-  border-bottom: 1px solid #ccc;
-}
-
-/* VISOR NORMAL */
+/* VISOR */
 #visor {
   border:1px solid #ccc;
   padding:20px;
   margin-top:10px;
-  height: 70vh;   /* 🔥 antes era chico, ahora grande */
+  height: 70vh;
   overflow:auto;
-  font-size: 20px;
+  font-size:20px;
 }
 
-/* MODO PANTALLA COMPLETA */
+/* FULLSCREEN */
 .fullscreen {
   position: fixed;
   top:0;
@@ -46,7 +42,33 @@ body { font-family: Arial; padding: 10px; }
   z-index:9999;
   padding:40px;
   font-size:28px;
-  overflow:auto;
+}
+
+/* botón salir */
+#salirFull {
+  position: fixed;
+  top:10px;
+  right:10px;
+  background:red;
+  color:white;
+  padding:10px;
+  display:none;
+  z-index:10000;
+}
+
+/* lista */
+.cancion {
+  padding: 5px;
+  border-bottom: 1px solid #ccc;
+}
+
+/* categorias */
+.categoria {
+  margin:5px;
+  padding:5px;
+  border:1px solid #ccc;
+  display:inline-block;
+  cursor:pointer;
 }
 </style>
 </head>
@@ -58,9 +80,17 @@ body { font-family: Arial; padding: 10px; }
 <button onclick="tab('editor')">Editor</button>
 <button onclick="tab('lista')">Cancionero</button>
 
+<!-- EDITOR -->
 <div id="editor">
 
 <input id="titulo" placeholder="Título"><br><br>
+
+<!-- CATEGORIA -->
+<select id="categoria"></select>
+<input id="nuevaCat" placeholder="Nueva categoría">
+<button onclick="crearCategoria()">+</button>
+
+<br><br>
 
 <button onclick="cmd('bold')">B</button>
 <button onclick="cmd('italic')">I</button>
@@ -76,19 +106,24 @@ body { font-family: Arial; padding: 10px; }
 
 </div>
 
+<!-- LISTA -->
 <div id="lista" style="display:none;">
-  <div id="canciones"></div>
 
-  <div id="visor"></div>
+<div id="filtros"></div>
 
-  <br>
-  <button onclick="pantallaCompleta()">🔲 Pantalla completa</button>
-  <button onclick="salirPantalla()">❌ Salir</button>
+<div id="canciones"></div>
 
-  <br><br>
-  <button onclick="editar()">Editar</button>
-  <button onclick="borrar()">Borrar</button>
+<div id="visor"></div>
+
+<button onclick="pantallaCompleta()">Pantalla completa</button>
+
+<br><br>
+<button onclick="editar()">Editar</button>
+<button onclick="borrar()">Borrar</button>
+
 </div>
+
+<button id="salirFull" onclick="salirPantalla()">SALIR</button>
 
 <script>
 // FIREBASE
@@ -101,8 +136,9 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let actualID = null;
-let actualData = null;
+let actualID=null;
+let actualData=null;
+let categoriaActual=null;
 
 // pestañas
 function tab(t){
@@ -116,44 +152,80 @@ function cmdColor(color){ document.execCommand("foreColor", false, color); }
 
 function cmdSize(size){
   document.execCommand("fontSize", false, "7");
-  let fonts = document.getElementsByTagName("font");
+  let fonts=document.getElementsByTagName("font");
   for(let f of fonts){
     if(f.size=="7"){
       f.removeAttribute("size");
-      f.style.fontSize = size+"px";
+      f.style.fontSize=size+"px";
     }
   }
 }
 
+// categorias
+let categorias=[];
+
+function crearCategoria(){
+  let nombre = nuevaCat.value;
+  if(!nombre) return;
+
+  categorias.push(nombre);
+  actualizarCategorias();
+  nuevaCat.value="";
+}
+
+function actualizarCategorias(){
+  categoria.innerHTML="";
+  filtros.innerHTML="";
+
+  categorias.forEach(cat=>{
+    let op=document.createElement("option");
+    op.value=cat;
+    op.innerText=cat;
+    categoria.appendChild(op);
+
+    let f=document.createElement("div");
+    f.className="categoria";
+    f.innerText=cat;
+    f.onclick=()=>{categoriaActual=cat; cargar();};
+    filtros.appendChild(f);
+  });
+}
+
 // guardar
 function guardar(){
-  let titulo = tituloInput.value;
-  let texto = editorTexto.innerHTML;
+  let titulo=tituloInput.value;
+  let texto=editorTexto.innerHTML;
+  let cat=categoria.value;
 
-  if(!titulo || !texto) return;
+  if(!titulo||!texto) return;
 
-  db.collection("canciones").add({ titulo, texto });
+  db.collection("canciones").add({titulo,texto,cat});
 
   tituloInput.value="";
   editorTexto.innerHTML="";
 }
 
 // lista
-db.collection("canciones").onSnapshot(snapshot=>{
-  cancionesDiv.innerHTML="";
+function cargar(){
+  db.collection("canciones").onSnapshot(snapshot=>{
+    cancionesDiv.innerHTML="";
 
-  snapshot.forEach(doc=>{
-    let data = doc.data();
+    snapshot.forEach(doc=>{
+      let d=doc.data();
 
-    let div=document.createElement("div");
-    div.className="cancion";
+      if(categoriaActual && d.cat!==categoriaActual) return;
 
-    div.innerHTML=`<b>${data.titulo}</b>
-    <button onclick="ver('${doc.id}')">Abrir</button>`;
+      let div=document.createElement("div");
+      div.className="cancion";
 
-    cancionesDiv.appendChild(div);
+      div.innerHTML=`<b>${d.titulo}</b>
+      <button onclick="ver('${doc.id}')">Abrir</button>`;
+
+      cancionesDiv.appendChild(div);
+    });
   });
-});
+}
+cargar();
 
 // ver
 function ver(id){
@@ -164,20 +236,25 @@ function ver(id){
   });
 }
 
-// pantalla completa
+// fullscreen
 function pantallaCompleta(){
   visor.classList.add("fullscreen");
+  salirFull.style.display="block";
 }
 
-// salir pantalla
 function salirPantalla(){
   visor.classList.remove("fullscreen");
+  salirFull.style.display="none";
 }
+
+// ESC salir
+document.addEventListener("keydown", e=>{
+  if(e.key==="Escape") salirPantalla();
+});
 
 // borrar
 function borrar(){
   if(!actualID) return;
-
   db.collection("canciones").doc(actualID).delete();
   visor.innerHTML="";
 }
@@ -188,8 +265,8 @@ function editar(){
 
   tab("editor");
 
-  tituloInput.value = actualData.titulo;
-  editorTexto.innerHTML = actualData.texto;
+  tituloInput.value=actualData.titulo;
+  editorTexto.innerHTML=actualData.texto;
 
   db.collection("canciones").doc(actualID).delete();
 }
@@ -199,6 +276,10 @@ let tituloInput=document.getElementById("titulo");
 let cancionesDiv=document.getElementById("canciones");
 let visor=document.getElementById("visor");
 let editorTexto=document.getElementById("editorTexto");
+let categoria=document.getElementById("categoria");
+let nuevaCat=document.getElementById("nuevaCat");
+let filtros=document.getElementById("filtros");
+let salirFull=document.getElementById("salirFull");
 </script>
 
 </body>
