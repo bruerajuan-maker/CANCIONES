@@ -54,8 +54,7 @@ button { margin:2px; }
 <!-- SOLAPAS -->
 <div>
   <span class="tabBtn tabActiva" onclick="cambiarTab('editorTab', this)">Editor</span>
-  <span class="tabBtn" onclick="mostrarLista('Canciones', this)">Canciones</span>
-  <span class="tabBtn" onclick="mostrarLista('Bajo', this)">Bajo</span>
+  <span class="tabBtn" onclick="cambiarTab('cancionesTab', this)">Canciones</span>
 </div>
 
 <!-- EDITOR -->
@@ -81,8 +80,8 @@ button { margin:2px; }
 
 </div>
 
-<!-- LISTA -->
-<div id="listaTab" style="display:none;">
+<!-- CANCIONES -->
+<div id="cancionesTab" style="display:none;">
 
 <div id="canciones"></div>
 
@@ -107,25 +106,16 @@ const db = firebase.firestore();
 
 let actualID=null;
 let actualData=null;
-let carpetaActual=null;
 
 // tabs
 function cambiarTab(id, btn){
   editorTab.style.display="none";
-  listaTab.style.display="none";
+  cancionesTab.style.display="none";
 
   document.querySelectorAll(".tabBtn").forEach(b=>b.classList.remove("tabActiva"));
 
   document.getElementById(id).style.display="block";
   btn.classList.add("tabActiva");
-}
-
-// mostrar lista por carpeta
-function mostrarLista(tipo, btn){
-  carpetaActual = tipo;
-
-  cambiarTab('listaTab', btn);
-  cargar();
 }
 
 // texto
@@ -154,47 +144,38 @@ function nuevo(){
   }
 }
 
-// 🔥 GUARDAR CON PREGUNTA
+// guardar
 function guardar(){
   let t=titulo.value;
   let texto=editor.innerHTML;
 
   if(!t||!texto) return;
 
-  let carpeta = prompt("¿Dónde guardar? (Canciones / Bajo)", "Canciones");
-
-  if(!carpeta) return;
-
   db.collection("canciones").add({
     titulo:t,
-    texto:texto,
-    carpeta:carpeta
+    texto:texto
   });
 
   editor.innerHTML="";
   titulo.value="";
 }
 
-// cargar filtrado
-function cargar(){
-  db.collection("canciones").get().then(snapshot=>{
-    canciones.innerHTML="";
+// lista (estable)
+db.collection("canciones").onSnapshot(snapshot=>{
+  canciones.innerHTML="";
 
-    snapshot.forEach(doc=>{
-      let d=doc.data();
+  snapshot.forEach(doc=>{
+    let d=doc.data();
 
-      if(carpetaActual && d.carpeta !== carpetaActual) return;
+    let div=document.createElement("div");
+    div.className="cancion";
 
-      let div=document.createElement("div");
-      div.className="cancion";
+    div.innerHTML=`<b>${d.titulo}</b>
+    <button onclick="ver('${doc.id}')">Abrir</button>`;
 
-      div.innerHTML=`<b>${d.titulo}</b>
-      <button onclick="ver('${doc.id}')">Abrir</button>`;
-
-      canciones.appendChild(div);
-    });
+    canciones.appendChild(div);
   });
-}
+});
 
 // ver
 function ver(id){
